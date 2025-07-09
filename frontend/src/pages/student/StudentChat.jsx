@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import AIMessage from "../../components/AIMessage";
 import Session from "../../components/Session";
 import StudentMessage from "../../components/StudentMessage";
+import VoiceConversation from "../../components/VoiceConversation";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import { fetchUserAttributes } from "aws-amplify/auth";
@@ -20,6 +21,8 @@ import {
 import DescriptionIcon from "@mui/icons-material/Description";
 import InfoIcon from "@mui/icons-material/Info";
 import KeyIcon from '@mui/icons-material/Key';
+import MicIcon from '@mui/icons-material/Mic';
+import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 
 
 // Importing l-mirage animation
@@ -77,6 +80,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   const [isAnswerLoading, setIsAnswerLoading] = useState(false);
 
   const [profilePicture, setProfilePicture] = useState({});
+
+  const [showVoiceConversation, setShowVoiceConversation] = useState(false);
 
 
   const navigate = useNavigate();
@@ -937,13 +942,22 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
               style={{ maxHeight: "8rem" }}
               maxLength={2096}
             />
-            <img
-              onClick={handleSubmit}
-              className="cursor-pointer w-4 h-4 mr-5"
-              src="./send.png"
-              alt="send"
-              style={{ filter: "invert(58%) sepia(80%) saturate(600%) hue-rotate(100deg) brightness(90%) contrast(95%)" }} 
-            />
+            <div className="flex items-center gap-2 mr-3">
+              <RecordVoiceOverIcon
+                onClick={() => setShowVoiceConversation(true)}
+                className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
+                style={{ fontSize: '22px' }}
+                title="Start voice conversation"
+              />
+
+              <img
+                onClick={handleSubmit}
+                className="cursor-pointer w-4 h-4"
+                src="./send.png"
+                alt="send"
+                style={{ filter: "invert(58%) sepia(80%) saturate(600%) hue-rotate(100deg) brightness(90%) contrast(95%)" }} 
+              />
+            </div>
           </div>
           <div className="flex-grow overflow-y-auto p-4 h-full">
             {messages.map((message, index) =>
@@ -999,6 +1013,13 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           onClose={() => setIsAnswerKeyOpen(false)}
           files={answerKeyFiles}
           isLoading={isAnswerLoading}
+        />
+
+        {/* Voice Conversation Dialog */}
+        <VoiceConversation
+          open={showVoiceConversation}
+          onClose={() => setShowVoiceConversation(false)}
+          patientContext={`Patient: ${patient?.patient_name}, Age: ${patient?.patient_age}, Condition: ${patient?.patient_prompt || 'General consultation'}`}
         />
 
         {/* Confirmation Dialog for Reveal */}
