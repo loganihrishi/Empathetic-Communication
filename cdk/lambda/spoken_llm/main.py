@@ -9,6 +9,7 @@ from aws_sdk_bedrock_runtime.client import BedrockRuntimeClient, InvokeModelWith
 from aws_sdk_bedrock_runtime.models import InvokeModelWithBidirectionalStreamInputChunk, BidirectionalInputPayloadPart
 from aws_sdk_bedrock_runtime.config import Config, HTTPAuthSchemeResolver, SigV4AuthScheme
 from smithy_aws_core.credentials_resolvers.environment import EnvironmentCredentialsResolver
+from socket_client import SocketClient
 
 # Audio config
 INPUT_SAMPLE_RATE = 16000
@@ -19,7 +20,7 @@ CHUNK_SIZE = 1024
 
 
 class NovaSonic:
-    def __init__(self, model_id='amazon.nova-sonic-v1:0', region='us-east-1'):
+    def __init__(self, model_id='amazon.nova-sonic-v1:0', region='us-east-1', socket_url=None):
         self.model_id = model_id
         self.region = region
         self.client = None
@@ -31,7 +32,8 @@ class NovaSonic:
         self.audio_content_name = str(uuid.uuid4())
         self.audio_queue = asyncio.Queue()
         self.role = None
-        self.display_assistant_text = False  # maybe change later?
+        self.display_assistant_text = False
+        self.socket_client = SocketClient(socket_url) if socket_url else None
 
     def _init_client(self):
         """Initialize the Bedrock Client for Nova"""
@@ -55,6 +57,9 @@ class NovaSonic:
         """Start a new Nova Sonic session"""
         if not self.client:
             self._init_client()
+        
+        if self.socket_client:
+            await self.socket_client.connect()
 
         # Init stream
 
@@ -275,14 +280,20 @@ class NovaSonic:
                            
                             if (self.role == "ASSISTANT" and self.display_assistant_text):
                                 print(f"Assistant: {text}")
+                                if self.socket_client:
+                                    await self.socket_client.emit_text_message(f"Assistant: {text}")
                             elif self.role == "USER":
                                 print(f"User: {text}")
+                                if self.socket_client:
+                                    await self.socket_client.emit_text_message(f"User: {text}")
                         
                         # Handle audio output
                         elif 'audioOutput' in json_data['event']:
                             audio_content = json_data['event']['audioOutput']['content']
                             audio_bytes = base64.b64decode(audio_content)
                             await self.audio_queue.put(audio_bytes)
+                            if self.socket_client:
+                                await self.socket_client.emit_audio_chunk(audio_bytes)
         except Exception as e:
             print(f"Error processing responses: {e}")
     
@@ -373,6 +384,8 @@ async def main():
         nova_client.response.cancel()
 
     await nova_client.end_session()
+    if nova_client.socket_client:
+        await nova_client.socket_client.disconnect()
     print("Session ended")
     
 if __name__ == "__main__":

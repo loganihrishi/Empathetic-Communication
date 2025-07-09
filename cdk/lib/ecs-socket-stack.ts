@@ -7,6 +7,8 @@ import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import { VpcStack } from "./vpc-stack";
 
 export class EcsSocketStack extends Stack {
+  public readonly socketUrl: string;
+
   constructor(
     scope: Construct,
     id: string,
@@ -33,7 +35,7 @@ export class EcsSocketStack extends Stack {
           desiredCount: 1,
           listenerPort: 80,
           taskImageOptions: {
-            image: ecs.ContainerImage.fromAsset("."),
+            image: ecs.ContainerImage.fromAsset("./socket-server"),
             containerPort: 3000,
           },
           publicLoadBalancer: true,
@@ -46,5 +48,7 @@ export class EcsSocketStack extends Stack {
       port: "3000",
       healthyHttpCodes: "200,404", // adapt to your server
     });
+
+    this.socketUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
   }
 }
