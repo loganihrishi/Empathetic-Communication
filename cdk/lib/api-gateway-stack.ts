@@ -1647,37 +1647,7 @@ export class ApiGatewayStack extends cdk.Stack {
       })
     );
 
-    /**
-     * Create Spoken LLM Lambda function
-     */
-    const spokenLlmFunction = new lambda.DockerImageFunction(
-      this,
-      `${id}-SpokenLlmFunction`,
-      {
-        code: lambda.DockerImageCode.fromImageAsset("./lambda/spoken_llm"),
-        memorySize: 1024,
-        timeout: cdk.Duration.seconds(300),
-        functionName: `${id}-SpokenLlmFunction`,
-        environment: {
-          SOCKET_URL: ecsSocketStack.socketUrl,
-        },
-      }
-    );
 
-    // Override the Logical ID of the Lambda Function to get ARN in OpenAPI
-    const cfnSpokenLlmFunction = spokenLlmFunction.node
-      .defaultChild as lambda.CfnFunction;
-    cfnSpokenLlmFunction.overrideLogicalId("SpokenLlmFunction");
-
-    // Add Bedrock permissions
-    spokenLlmFunction.addToRolePolicy(bedrockPolicyStatement);
-
-    // Add the permission to the Lambda function's policy to allow API Gateway access
-    spokenLlmFunction.addPermission("AllowApiGatewayInvoke", {
-      principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
-      action: "lambda:InvokeFunction",
-      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.api.restApiId}/*/*/student*`,
-    });
 
     // Waf Firewall
     const waf = new wafv2.CfnWebACL(this, `${id}-waf`, {

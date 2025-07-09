@@ -42,7 +42,7 @@ const dbFlowStack = new DBFlowStack(
   apiStack,
   { env }
 );
-const amplifyStack = new AmplifyStack(app, `${StackPrefix}-Amplify`, apiStack, {
+const amplifyStack = new AmplifyStack(app, `${StackPrefix}-Amplify`, apiStack, ecsSocketStack, {
   env,
 });
 cdk.Tags.of(app).add("app", "Virtual-Care-Interaction");

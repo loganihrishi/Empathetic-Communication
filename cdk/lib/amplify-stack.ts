@@ -9,12 +9,14 @@ import { BuildSpec } from "aws-cdk-lib/aws-codebuild";
 import { Construct } from "constructs";
 import * as yaml from "yaml";
 import { ApiGatewayStack } from "./api-gateway-stack";
+import { EcsSocketStack } from "./ecs-socket-stack";
 
 export class AmplifyStack extends cdk.Stack {
   constructor(
     scope: Construct,
     id: string,
     apiStack: ApiGatewayStack,
+    ecsSocketStack: EcsSocketStack,
     props?: cdk.StackProps
   ) {
     super(scope, id, props);
@@ -70,6 +72,7 @@ export class AmplifyStack extends cdk.Stack {
         VITE_COGNITO_USER_POOL_CLIENT_ID: apiStack.getUserPoolClientId(),
         VITE_API_ENDPOINT: apiStack.getEndpointUrl(),
         VITE_IDENTITY_POOL_ID: apiStack.getIdentityPoolId(),
+        VITE_SOCKET_URL: ecsSocketStack.socketUrl,
       },
       buildSpec: BuildSpec.fromObjectToYaml(amplifyYaml),
     });
