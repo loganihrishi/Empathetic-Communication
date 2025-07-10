@@ -1,4 +1,5 @@
-import { Stack, StackProps, Duration } from "aws-cdk-lib";
+import { Stack, StackProps, Duration, CfnOutput } from "aws-cdk-lib";
+import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -50,5 +51,12 @@ export class EcsSocketStack extends Stack {
     });
 
     this.socketUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
+
+    // Export the socket URL
+    new cdk.CfnOutput(this, 'SocketUrl', {
+      value: this.socketUrl,
+      description: 'Socket.IO server URL',
+      exportName: `${id}-SocketUrl`
+    });
   }
 }

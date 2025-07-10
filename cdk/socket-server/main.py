@@ -296,49 +296,71 @@ class NovaSonic:
             print(f"Error processing responses: {e}")
     
     async def stream_audio_to_frontend(self):
-        """Stream audio responses to frontend via WebSocket."""
+        """Stream audio responses to frontend via stdout."""
         try:
             while self.is_active:
                 audio_data = await self.audio_queue.get()
-                if self.socket_client:
-                    await self.socket_client.emit_audio_chunk(audio_data)
+                # Output as JSON for Node.js to capture
+                audio_b64 = base64.b64encode(audio_data).decode('utf-8')
+                print(json.dumps({"type": "audio", "data": audio_b64}))
         except Exception as e:
-            print(f"Error streaming audio: {e}")
+            print(json.dumps({"type": "error", "text": str(e)}))
+    
+    async def send_text_message(self, text):
+        """Send text message to Nova Sonic."""
+        # Create text content for Nova Sonic
+        text_content = f'''
+        {{
+            "event": {{
+                "textInput": {{
+                    "promptName": "{self.prompt_name}",
+                    "contentName": "{self.content_name}",
+                    "content": "{text}"
+                }}
+            }}
+        }}
+        '''
+        await self.send_event(text_content)
 
     async def receive_audio_from_frontend(self, audio_data):
         """Receive audio data from frontend and send to Nova Sonic."""
         if self.is_active:
             await self.send_audio_chunk(audio_data)
 
-async def main(socket_url=None):
-    # Create Nova Sonic client with WebSocket
-    nova_client = NovaSonic(socket_url=socket_url)
-
-    # Start session
+async def main():
+    nova_client = NovaSonic()
     await nova_client.start_session()
-
-    # Start audio streaming to frontend
+    
+    print(json.dumps({"type": "text", "text": "Nova Sonic ready! Ask me anything."}))
+    
+    # Process stdin for text/audio input
+    async def handle_input():
+        import sys
+        while nova_client.is_active:
+            try:
+                line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
+                if not line:
+                    break
+                    
+                data = json.loads(line.strip())
+                if data['type'] == 'text':
+                    # Send text to Nova Sonic
+                    await nova_client.send_text_message(data['data'])
+                elif data['type'] == 'audio':
+                    # Send audio to Nova Sonic
+                    audio_bytes = base64.b64decode(data['data'])
+                    await nova_client.send_audio_chunk(audio_bytes)
+            except Exception as e:
+                print(json.dumps({"type": "error", "text": str(e)}))
+    
+    # Start input handler and audio streaming
+    input_task = asyncio.create_task(handle_input())
     stream_task = asyncio.create_task(nova_client.stream_audio_to_frontend())
-
-    # Keep session alive for a reasonable time
-    await asyncio.sleep(300)  # 5 minutes
-
-    # End session
+    
+    await asyncio.gather(input_task, stream_task, return_exceptions=True)
+    
     nova_client.is_active = False
-
-    # Cancel tasks
-    if not stream_task.done():
-        stream_task.cancel()
-        await asyncio.gather(stream_task, return_exceptions=True)
-
-    # Cancel response task
-    if nova_client.response and not nova_client.response.done():
-        nova_client.response.cancel()
-
     await nova_client.end_session()
-    if nova_client.socket_client:
-        await nova_client.socket_client.disconnect()
-    print("Session ended")
     
 if __name__ == "__main__":
     asyncio.run(main())
