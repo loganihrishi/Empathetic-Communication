@@ -229,9 +229,15 @@ def get_response(
             
             empathy_feedback += f"**Realism Assessment:** Your response is {realism_flag} {realism_icon}\n\n"
             
-            # Add detailed feedback with reasoning
+            # Add LLM-as-a-Judge reasoning and detailed feedback
+            judge_reasoning = empathy_evaluation.get('judge_reasoning', {})
+            if judge_reasoning:
+                empathy_feedback += f"**Judge Assessment:**\n"
+                if 'overall_assessment' in judge_reasoning:
+                    empathy_feedback += f"{judge_reasoning['overall_assessment']}\n\n"
+            
             if feedback:
-                if isinstance(feedback, dict):  # Structured feedback from Nova Pro
+                if isinstance(feedback, dict):  # Structured feedback from LLM Judge
                     # Add strengths
                     if 'strengths' in feedback and feedback['strengths']:
                         empathy_feedback += f"**Strengths:**\n"
@@ -246,7 +252,7 @@ def get_response(
                             empathy_feedback += f"• {area}\n"
                         empathy_feedback += "\n"
                     
-                    # Add why realistic/unrealistic
+                    # Add why realistic/unrealistic with judge reasoning
                     if 'why_realistic' in feedback and feedback['why_realistic']:
                         empathy_feedback += f"**Your response is {realism_flag} because:** {feedback['why_realistic']}\n\n"
                     elif 'why_unrealistic' in feedback and feedback['why_unrealistic']:
@@ -254,14 +260,14 @@ def get_response(
                     
                     # Add improvement suggestions
                     if 'improvement_suggestions' in feedback and feedback['improvement_suggestions']:
-                        empathy_feedback += f"**Improvement suggestions:**\n"
+                        empathy_feedback += f"**Judge Recommendations:**\n"
                         for suggestion in feedback['improvement_suggestions']:
                             empathy_feedback += f"• {suggestion}\n"
                         empathy_feedback += "\n"
                     
                     # Add alternative phrasing
                     if 'alternative_phrasing' in feedback and feedback['alternative_phrasing']:
-                        empathy_feedback += f"**Try this approach:** *{feedback['alternative_phrasing']}*\n\n"
+                        empathy_feedback += f"**Judge-Recommended Approach:** *{feedback['alternative_phrasing']}*\n\n"
                         
                 elif isinstance(feedback, str) and len(feedback) > 10:  # Simple string feedback
                     empathy_feedback += f"**Feedback:** {feedback}\n"
@@ -440,7 +446,7 @@ def get_empathy_level_name(score: int) -> str:
 
 def evaluate_empathy(student_response: str, patient_context: str, bedrock_client) -> dict:
     """
-    Evaluate empathy score and realism of student response.
+    LLM-as-a-Judge empathy evaluation using structured scoring methodology.
     
     Args:
     student_response (str): The student's response to evaluate
@@ -448,65 +454,68 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
     bedrock_client: Bedrock client for Nova Pro
     
     Returns:
-    dict: Contains empathy_score, realism_flag, and feedback
+    dict: Contains empathy_score, realism_flag, and feedback with justifications
     """
 
     evaluation_prompt = f"""
-    You are an expert healthcare communication coach. Evaluate this pharmacy student's response using these 4 empathy criteria:
+    You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacy student's empathetic communication.
 
+    **EVALUATION CONTEXT:**
     Patient Context: {patient_context}
     Student Response: {student_response}
 
-    Evaluate each category on a 1-5 scale:
+    **JUDGE INSTRUCTIONS:**
+    As an expert judge, evaluate this response across multiple empathy dimensions. For each criterion, provide:
+    1. A score (1-5 scale)
+    2. Clear justification for the score
+    3. Specific evidence from the student's response
+    4. Actionable improvement recommendations
 
-    **Perspective-Taking:**
-    • Extending (5): Exceptional understanding with profound insights into patient's viewpoint
-    • Proficient (4): Clearly demonstrates understanding of the patient's point of view with thoughtful, relevant insights
-    • Competent (3): Shows awareness of the patient's perspective with minor gaps
-    • Advanced Beginner (2): Some attempt to understand the patient's perspective, but limited depth
-    • Novice (1): Little or no effort to consider the patient's viewpoint
+    **SCORING CRITERIA:**
 
-    **Emotional Resonance / Compassionate Care:**
-    • Extending (5): Exceptional warmth, deeply attuned to emotional needs, creates strong therapeutic connection
-    • Proficient (4): Expresses genuine concern and sensitivity to the patient's emotional state; response is warm and respectful
-    • Competent (3): Expresses concern, though tone or wording may be slightly less empathetic
-    • Advanced Beginner (2): Shows some emotional awareness but lacks warmth or appropriateness
-    • Novice (1): Response is emotionally flat or dismissive
+    **Perspective-Taking (1-5):**
+    • 5-Extending: Exceptional understanding with profound insights into patient's viewpoint
+    • 4-Proficient: Clear understanding of patient's perspective with thoughtful insights
+    • 3-Competent: Shows awareness of patient's perspective with minor gaps
+    • 2-Advanced Beginner: Limited attempt to understand patient's perspective
+    • 1-Novice: Little or no effort to consider patient's viewpoint
 
-    **Acknowledgment of Patient's Experience:**
-    • Extending (5): Deeply validates and honors patient's experience, demonstrates exceptional understanding
-    • Proficient (4): Clearly validates the patient's feelings or experience in a respectful, patient-centered way
-    • Competent (3): Attempts to validate the patient's experience with minor omissions
-    • Advanced Beginner (2): Somewhat recognizes the patient's experience but lacks clarity or depth
-    • Novice (1): Ignores or invalidates the patient's feelings or experience
+    **Emotional Resonance/Compassionate Care (1-5):**
+    • 5-Extending: Exceptional warmth, deeply attuned to emotional needs
+    • 4-Proficient: Genuine concern and sensitivity, warm and respectful
+    • 3-Competent: Expresses concern with slightly less empathetic tone
+    • 2-Advanced Beginner: Some emotional awareness but lacks warmth
+    • 1-Novice: Emotionally flat or dismissive response
 
-    **Language & Communication:**
-    • Extending (5): Masterful use of therapeutic communication, perfectly tailored language
-    • Proficient (4): Uses patient-friendly, non-judgmental, inclusive language throughout
-    • Competent (3): Mostly clear and respectful, with minor word choices that could be improved
-    • Advanced Beginner (2): Some unclear or technical language; minor judgmental tone
-    • Novice (1): Uses overly technical, dismissive, or insensitive language
+    **Acknowledgment of Patient's Experience (1-5):**
+    • 5-Extending: Deeply validates and honors patient's experience
+    • 4-Proficient: Clearly validates feelings in patient-centered way
+    • 3-Competent: Attempts validation with minor omissions
+    • 2-Advanced Beginner: Somewhat recognizes experience, lacks depth
+    • 1-Novice: Ignores or invalidates patient's feelings
 
-    **Cognitive vs Affective Empathy Analysis:**
-    
-    **Cognitive Empathy (Understanding):**
-    • Definition: Understanding another person's thoughts and perspective
-    • Focus: Explaining medical information in a way the patient understands, perspective-taking
-    • Evaluation: How well does the response demonstrate understanding of the patient's viewpoint and concerns?
-    
-    **Affective Empathy (Feeling):**
-    • Definition: Feeling and responding appropriately to another person's emotions
-    • Focus: Recognizing patient's emotions and offering appropriate emotional support
-    • Evaluation: How well does the response show emotional attunement and provide emotional comfort?
+    **Language & Communication (1-5):**
+    • 5-Extending: Masterful therapeutic communication, perfectly tailored
+    • 4-Proficient: Patient-friendly, non-judgmental, inclusive language
+    • 3-Competent: Mostly clear and respectful, minor improvements needed
+    • 2-Advanced Beginner: Some unclear/technical language, minor judgmental tone
+    • 1-Novice: Overly technical, dismissive, or insensitive language
 
-    **Realism Assessment**: realistic or unrealistic
-    - Unrealistic: False reassurances, impossible promises, dismissing serious symptoms, medical inaccuracies
-    - Realistic: Medically appropriate, honest, evidence-based responses
+    **Cognitive Empathy (Understanding) (1-5):**
+    Focus: Understanding patient's thoughts, perspective-taking, explaining information clearly
+    Evaluate: How well does the response demonstrate understanding of patient's viewpoint?
 
-    Calculate overall empathy score as average of the 4 categories (round to nearest integer).
-    Evaluate cognitive and affective empathy separately based on the definitions above.
+    **Affective Empathy (Feeling) (1-5):**
+    Focus: Recognizing and responding to patient's emotions, providing emotional support
+    Evaluate: How well does the response show emotional attunement and comfort?
 
-    Respond in JSON format:
+    **Realism Assessment:**
+    • Realistic: Medically appropriate, honest, evidence-based responses
+    • Unrealistic: False reassurances, impossible promises, medical inaccuracies
+
+    **JUDGE OUTPUT FORMAT:**
+    Provide structured evaluation with detailed justifications for each score.
+
     {{
         "empathy_score": <integer 1-5>,
         "perspective_taking": <integer 1-5>,
@@ -516,13 +525,23 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
         "cognitive_empathy": <integer 1-5>,
         "affective_empathy": <integer 1-5>,
         "realism_flag": "realistic|unrealistic",
+        "judge_reasoning": {{
+            "perspective_taking_justification": "Detailed explanation for perspective-taking score with specific evidence",
+            "emotional_resonance_justification": "Detailed explanation for emotional resonance score with specific evidence",
+            "acknowledgment_justification": "Detailed explanation for acknowledgment score with specific evidence",
+            "language_justification": "Detailed explanation for language score with specific evidence",
+            "cognitive_empathy_justification": "Detailed explanation for cognitive empathy score",
+            "affective_empathy_justification": "Detailed explanation for affective empathy score",
+            "realism_justification": "Detailed explanation for realism assessment",
+            "overall_assessment": "Comprehensive judge summary of empathy performance"
+        }},
         "feedback": {{
-            "strengths": ["List what the student did well"],
-            "areas_for_improvement": ["List specific areas to improve"],
-            "why_realistic": "Explain why response is realistic (if realistic)",
-            "why_unrealistic": "Explain why response is unrealistic (if unrealistic)",
-            "improvement_suggestions": ["List specific suggestions for improvement"],
-            "alternative_phrasing": "Provide better phrasing example tailored to this patient scenario"
+            "strengths": ["Specific strengths with evidence from response"],
+            "areas_for_improvement": ["Specific areas needing improvement with examples"],
+            "why_realistic": "Judge explanation for realistic assessment (if applicable)",
+            "why_unrealistic": "Judge explanation for unrealistic assessment (if applicable)",
+            "improvement_suggestions": ["Actionable, specific improvement recommendations"],
+            "alternative_phrasing": "Judge-recommended alternative phrasing for this scenario"
         }}
     }}
     """
@@ -553,6 +572,9 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
         # Clean response text and parse JSON
         try:
             evaluation = json.loads(response_text.strip())
+            # Add judge metadata
+            evaluation["evaluation_method"] = "LLM-as-a-Judge"
+            evaluation["judge_model"] = bedrock_client["model_id"]
             return evaluation
         except json.JSONDecodeError:
             # Fallback if Nova Pro doesn't return valid JSON
@@ -566,6 +588,8 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
                 "cognitive_empathy": 3,
                 "affective_empathy": 3,
                 "realism_flag": "realistic",
+                "evaluation_method": "LLM-as-a-Judge",
+                "judge_model": bedrock_client["model_id"],
                 "feedback": "System error - unable to parse evaluation. Please try again."
             }
         
@@ -580,6 +604,8 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
             "cognitive_empathy": 3,
             "affective_empathy": 3,
             "realism_flag": "realistic",
+            "evaluation_method": "LLM-as-a-Judge",
+            "judge_model": bedrock_client["model_id"],
             "feedback": "System error - unable to evaluate. Please try again."
         }
 
