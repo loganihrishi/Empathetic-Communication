@@ -29,7 +29,9 @@ export class EcsSocketStack extends Stack {
     const taskRole = new iam.Role(this, "SocketTaskRole", {
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonECSTaskExecutionRolePolicy"
+        ),
       ],
       inlinePolicies: {
         BedrockPolicy: new iam.PolicyDocument({
@@ -40,9 +42,18 @@ export class EcsSocketStack extends Stack {
                 "bedrock:InvokeModel",
                 "bedrock:InvokeModelWithBidirectionalStream",
                 "bedrock:Converse",
-                "bedrock:ConverseStream"
+                "bedrock:ConverseStream",
+                "bedrock:InvokeModelWithResponseStream"
               ],
-              resources: ["*"]
+              resources: ["*"],
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                "sts:AssumeRole",
+                "sts:GetCallerIdentity"
+              ],
+              resources: ["*"],
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
@@ -50,20 +61,23 @@ export class EcsSocketStack extends Stack {
                 "ssmmessages:CreateControlChannel",
                 "ssmmessages:CreateDataChannel",
                 "ssmmessages:OpenControlChannel",
-                "ssmmessages:OpenDataChannel"
+                "ssmmessages:OpenDataChannel",
               ],
-              resources: ["*"]
-            })
-          ]
-        })
-      }
+              resources: ["*"],
+            }),
+          ],
+        }),
+      },
     });
 
     // Enable execute command on cluster
     cluster.addCapacity("DefaultAutoScalingGroup", {
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO
+      ),
       minCapacity: 0,
-      maxCapacity: 0
+      maxCapacity: 0,
     });
 
     // Fargate service with load balancer
@@ -81,10 +95,10 @@ export class EcsSocketStack extends Stack {
             image: ecs.ContainerImage.fromAsset("./socket-server"),
             containerPort: 3000,
             taskRole: taskRole,
-            executionRole: taskRole
+            executionRole: taskRole,
           },
           publicLoadBalancer: true,
-          enableExecuteCommand: true
+          enableExecuteCommand: true,
         }
       );
 

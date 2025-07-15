@@ -242,10 +242,12 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         if (event.data.size > 0) {
           const reader = new FileReader();
           reader.onload = () => {
-            const audioData = reader.result.split(",")[1];
-            socket.emit("audio-input", { data: audioData });
+            const arrayBuffer = reader.result;
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
+            socket.emit("audio-input", { data: base64 });
           };
-          reader.readAsDataURL(event.data);
+          reader.readAsArrayBuffer(event.data);
         }
       };
       
@@ -253,12 +255,21 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         socket.emit("end-audio");
       };
 
-      recorder.start(100); // Send audio chunks every 100ms
+      recorder.start(250); // Send audio chunks every 250ms
       setMediaRecorder(recorder);
       setIsRecording(true);
 
       socket.emit("start-nova-sonic");
       console.log("📡 Emitted start-nova-sonic event");
+      
+        // Send a dummy audio chunk to satisfy Nova's requirement
+      setTimeout(() => {
+        const dummyAudio = new ArrayBuffer(1024);
+        const uint8Array = new Uint8Array(dummyAudio);
+        const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
+        socket.emit("audio-input", { data: base64 });
+        console.log("📡 Sent initial audio chunk");
+      }, 3000);
     } catch (error) {
       console.error("🎤 Microphone access denied:", error);
     }
