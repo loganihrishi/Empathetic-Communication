@@ -1272,20 +1272,55 @@ exports.handler = async (event) => {
               break;
             }
 
-            // Query empathy evaluation data from messages table
-            const empathyData = await sqlConnection`
-              SELECT m.empathy_evaluation
-              FROM "messages" m
-              JOIN "sessions" s ON m.session_id = s.session_id
-              JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
-              JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
-              WHERE e.user_id = ${userId}
-              AND e.simulation_group_id = ${simulation_group_id}
-              AND m.student_sent = true
-              AND m.empathy_evaluation IS NOT NULL;
-            `;
+            // Check if empathy_evaluation column exists and get data
+            let empathyData = [];
+            try {
+              // First check if column exists
+              const columnCheck = await sqlConnection`
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'messages' AND column_name = 'empathy_evaluation';
+              `;
+              
+              if (columnCheck.length === 0) {
+                console.log("empathy_evaluation column does not exist in messages table");
+                response.statusCode = 200;
+                response.body = JSON.stringify({
+                  overall_score: 0,
+                  overall_level: "No Data",
+                  total_interactions: 0,
+                  empathy_interactions: 0,
+                  avg_perspective_taking: 0,
+                  avg_emotional_resonance: 0,
+                  avg_acknowledgment: 0,
+                  avg_language_communication: 0,
+                  avg_cognitive_empathy: 0,
+                  avg_affective_empathy: 0,
+                  summary: "Empathy evaluation feature not yet available. Database schema needs to be updated."
+                });
+                break;
+              }
+              
+              // Column exists, try to get data
+              empathyData = await sqlConnection`
+                SELECT m.empathy_evaluation
+                FROM "messages" m
+                JOIN "sessions" s ON m.session_id = s.session_id
+                JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
+                JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
+                WHERE e.user_id = ${userId}
+                AND e.simulation_group_id = ${simulation_group_id}
+                AND m.student_sent = true
+                AND m.empathy_evaluation IS NOT NULL;
+              `;
+              
+            } catch (error) {
+              console.error("Error querying empathy data:", error);
+              response.statusCode = 500;
+              response.body = JSON.stringify({ error: "Database query failed: " + error.message });
+              break;
+            }
 
-            if (empathyData.length === 0) {
+            if (!empathyData || empathyData.length === 0) {
               response.statusCode = 200;
               response.body = JSON.stringify({
                 overall_score: 0,
