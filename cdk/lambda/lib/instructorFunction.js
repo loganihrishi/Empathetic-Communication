@@ -1375,10 +1375,40 @@ exports.handler = async (event) => {
 
             // Generate summary
             const overallLevel = getLevel(parseFloat(avgScore));
+
+            // Determine strongest areas
+            const strengths = [
+              avgPT >= 3.5 ? 'perspective-taking' : '',
+              avgER >= 3.5 ? 'emotional resonance' : '',
+              avgAck >= 3.5 ? 'patient acknowledgment' : '',
+              avgLang >= 3.5 ? 'communication language' : ''
+            ].filter(Boolean).join(', ');
+
+            // Determine areas for development
+            const weaknesses = [
+              avgPT < 3.5 ? 'perspective-taking' : '',
+              avgER < 3.5 ? 'emotional resonance' : '',
+              avgAck < 3.5 ? 'patient acknowledgment' : '',
+              avgLang < 3.5 ? 'communication clarity' : ''
+            ].filter(Boolean).join(', ');
+
+            // Determine empathy profile
+            let empathySummary = '';
+            if (avgCog === avgAff) {
+              empathySummary = avgCog >= 3.5
+                ? 'a balanced and strong mix of cognitive (understanding) and affective (emotional connection) empathy'
+                : 'a balanced but limited expression of both cognitive and affective empathy';
+            } else {
+              empathySummary = avgCog > avgAff
+                ? 'stronger cognitive empathy (understanding)'
+                : 'stronger affective empathy (emotional connection)';
+            }
+
+            // Final summary string
             const summary = `This student demonstrates ${overallLevel.toLowerCase()} empathetic communication skills with an average score of ${avgScore}/5. ` +
-              `Strongest areas include ${avgPT >= 3.5 ? 'perspective-taking, ' : ''}${avgER >= 3.5 ? 'emotional resonance, ' : ''}${avgAck >= 3.5 ? 'patient acknowledgment, ' : ''}${avgLang >= 3.5 ? 'communication language' : ''}. ` +
-              `Areas for development: ${avgPT < 3.5 ? 'perspective-taking, ' : ''}${avgER < 3.5 ? 'emotional resonance, ' : ''}${avgAck < 3.5 ? 'patient acknowledgment, ' : ''}${avgLang < 3.5 ? 'communication clarity' : ''}. ` +
-              `The student shows ${avgCog > avgAff ? 'stronger cognitive empathy (understanding)' : 'stronger affective empathy (emotional connection)'} in their interactions.`;
+              (strengths ? `Strongest areas include ${strengths}. ` : '') +
+              (weaknesses ? `Areas for development: ${weaknesses}. ` : '') +
+              `The student shows ${empathySummary} in their interactions.`;  
 
             // Get total interactions count
             const totalInteractions = await sqlConnection`
