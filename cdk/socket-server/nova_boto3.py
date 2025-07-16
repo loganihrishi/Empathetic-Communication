@@ -58,30 +58,36 @@ class NovaSonic:
         self.role = None
         self.display_assistant_text = False
 
-    def _init_client(self):
-        try:
-            self.refresh_env_credentials()
-            session = boto3.Session()
-            creds = session.get_credentials().get_frozen_credentials()
-            
-            config = Config(
+def _init_client(self):
+    try:
+        logger.info("🔄 Refreshing AWS credentials and initializing Bedrock client")
+        session = boto3.Session()
+        creds = session.get_credentials().get_frozen_credentials()
+
+        # Write creds to environment
+        os.environ['AWS_ACCESS_KEY_ID'] = creds.access_key
+        os.environ['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
+        os.environ['AWS_DEFAULT_REGION'] = self.region
+        if creds.token:
+            os.environ['AWS_SESSION_TOKEN'] = creds.token
+        else:
+            os.environ.pop('AWS_SESSION_TOKEN', None)
+
+        # Recreate the credentials resolver so smithy reloads env vars
+        config = Config(
             endpoint_uri=f"https://bedrock-runtime.{self.region}.amazonaws.com",
             region=self.region,
             aws_credentials_identity_resolver=EnvironmentCredentialsResolver(),
             http_auth_scheme_resolver=HTTPAuthSchemeResolver(),
             http_auth_schemes={"aws.auth#sigv4": SigV4AuthScheme()},
         )
-            self.client = BedrockRuntimeClient(config=config)
-        except Exception as e:
-            print(json.dumps({"type": "error", "text": f"Client init error: {str(e)}"}), flush=True)
-
-    async def send_event(self, event_json):
-        event = InvokeModelWithBidirectionalStreamInputChunk(
-            value=BidirectionalInputPayloadPart(bytes_=event_json.encode('utf-8'))
-        )
-        await self.stream.input_stream.send(event)
+        self.client = BedrockRuntimeClient(config=config)
+        logger.info("✅ Bedrock client initialized")
+    except Exception as e:
+        logger.error(f"Client init error: {str(e)}")
 
     async def start_session(self):
+        self._init_client() # Comment out later, redeploy required
         if self.stream and self.is_active:
             return
             
@@ -184,7 +190,10 @@ class NovaSonic:
         '''
         await self.send_event(text_content_end)
         
-        # Send prompt end to trigger response generation
+        # Start response processing
+        self.response = asyncio.create_task(self._process_responses())
+        
+        # Send prompt end to trigger initial response
         prompt_end = f'''
         {{
             "event": {{
@@ -195,12 +204,9 @@ class NovaSonic:
         }}
         '''
         await self.send_event(prompt_end)
-
-            # Start response processing
-        self.response = asyncio.create_task(self._process_responses())
         
         # Auto-start audio input after session is ready
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)
         await self.start_audio_input()
 
     async def start_audio_input(self):
@@ -238,13 +244,21 @@ class NovaSonic:
             if len(audio_bytes) == 0:
                 return
                 
-            # Send audio as binary chunk, not JSON event
-            chunk = InvokeModelWithBidirectionalStreamInputChunk(
-                value=BidirectionalInputPayloadPart(
-                    bytes_=audio_bytes
-                )
-            )
-            await self.stream.input_stream.send(chunk)
+            # Encode audio as base64 and send as JSON event
+            audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+            audio_input = f'''
+            {{
+                "event": {{
+                    "audioInput": {{
+                        "promptName": "{self.prompt_name}",
+                        "contentName": "{self.audio_content_name}",
+                        "content": "{audio_b64}"
+                    }}
+                }}
+            }}
+            '''
+            await self.send_event(audio_input)
+            
         except Exception as e:
             print(json.dumps({"type": "error", "text": f"Audio chunk error: {str(e)}"}), flush=True)
     
@@ -288,64 +302,27 @@ class NovaSonic:
     async def _process_responses(self):
         try:
             while self.is_active:
-                print(json.dumps({"type": "debug", "text": "Waiting for Nova response..."}), flush=True)
                 output = await self.stream.await_output()
                 result = await output[1].receive()
-
-                # Log raw binary size
-                print(json.dumps({"type": "debug", "text": f"Received raw bytes: {len(result.value.bytes_)}"}), flush=True)
 
                 try:
                     decoded = result.value.bytes_.decode("utf-8")
                     json_data = json.loads(decoded)
-                    print(json.dumps({"type": "debug", "text": f"Parsed JSON: {json_data}"}), flush=True)
 
                     if 'event' in json_data:
-                        print(json.dumps({"type": "debug", "text": f"Event keys: {list(json_data['event'].keys())}"}), flush=True)
-                        
                         if 'textOutput' in json_data['event']:
                             text = json_data['event']['textOutput']['content']
-                            print(json.dumps({"type": "text", "text": f"{self.role or 'Unknown'}: {text}"}), flush=True)
+                            print(json.dumps({"type": "text", "text": text}), flush=True)
 
                         elif 'audioOutput' in json_data['event']:
                             audio_content = json_data['event']['audioOutput']['content']
-                            print(json.dumps({"type": "debug", "text": f"Received audio (base64 size: {len(audio_content)})"}), flush=True)
                             print(json.dumps({"type": "audio", "data": audio_content}), flush=True)
 
                         elif 'contentStart' in json_data['event']:
                             self.role = json_data['event']['contentStart'].get("role", "Unknown")
-                            print(json.dumps({"type": "debug", "text": f"Role set to: {self.role}"}), flush=True)
 
                 except Exception as e:
-                    print(json.dumps({"type": "debug", "text": "Non-JSON output, possibly raw audio or partial data"}), flush=True)
-
-                    
-                    if 'event' in json_data:
-                        print(json.dumps({"type": "debug", "text": f"Event type: {list(json_data['event'].keys())}"}), flush=True)
-                        
-                        if 'contentStart' in json_data['event']:
-                            content_start = json_data['event']['contentStart'] 
-                            self.role = content_start['role']
-                            print(json.dumps({"type": "debug", "text": f"Content started, role: {self.role}"}), flush=True)
-                            if 'additionalModelFields' in content_start:
-                                additional_fields = json.loads(content_start['additionalModelFields'])
-                                if additional_fields.get('generationStage') == 'SPECULATIVE':
-                                    self.display_assistant_text = True
-                                else:
-                                    self.display_assistant_text = False
-                                
-                        elif 'textOutput' in json_data['event']:
-                            text = json_data['event']['textOutput']['content']    
-                            print(json.dumps({"type": "debug", "text": f"Text output received: {text}"}), flush=True)
-                            if (self.role == "ASSISTANT" and self.display_assistant_text):
-                                print(json.dumps({"type": "text", "text": text}), flush=True)
-                            elif self.role == "USER":
-                                print(json.dumps({"type": "text", "text": f"User: {text}"}), flush=True)
-                        
-                        elif 'audioOutput' in json_data['event']:
-                            audio_content = json_data['event']['audioOutput']['content']
-                            print(json.dumps({"type": "debug", "text": "Audio output received"}), flush=True)
-                            print(json.dumps({"type": "audio", "data": audio_content}), flush=True)
+                    pass
         except Exception as e:
             print(json.dumps({"type": "error", "text": f"Response processing error: {str(e)}"}), flush=True)
 
