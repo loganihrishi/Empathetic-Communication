@@ -193,7 +193,9 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   };
 
   // Connect to WebSocket server
-  const socket = io(import.meta.env.VITE_SOCKET_URL);
+  const socket = io(import.meta.env.VITE_SOCKET_URL, {
+    transports: ["websocket"],
+  });
 
   // Debug WebSocket connection
   socket.on("connect", () => {

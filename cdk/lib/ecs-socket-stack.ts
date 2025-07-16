@@ -34,7 +34,8 @@ export class EcsSocketStack extends Stack {
           cpu: 512,
           memoryLimitMiB: 1024,
           desiredCount: 1,
-          listenerPort: 80,
+          listenerPort: 443,
+          protocol: elbv2.ApplicationProtocol.HTTPS,
           taskImageOptions: {
             image: ecs.ContainerImage.fromAsset("./socket-server"),
             containerPort: 3000,
@@ -43,14 +44,18 @@ export class EcsSocketStack extends Stack {
         }
       );
 
-    // Optional: health check config
+    // Configure for WebSocket support
     fargateService.targetGroup.configureHealthCheck({
       path: "/",
       port: "3000",
-      healthyHttpCodes: "200,404", // adapt to your server
+      healthyHttpCodes: "200,404",
     });
 
-    this.socketUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
+    // Enable sticky sessions for WebSocket
+    fargateService.targetGroup.setAttribute('stickiness.enabled', 'true');
+    fargateService.targetGroup.setAttribute('stickiness.type', 'lb_cookie');
+
+    this.socketUrl = `https://${fargateService.loadBalancer.loadBalancerDnsName}`;
 
     // Export the socket URL
     new cdk.CfnOutput(this, 'SocketUrl', {
