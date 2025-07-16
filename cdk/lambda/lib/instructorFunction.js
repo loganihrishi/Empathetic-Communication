@@ -1257,7 +1257,7 @@ exports.handler = async (event) => {
           event.queryStringParameters.student_email &&
           event.queryStringParameters.simulation_group_id
         ) {
-          const { student_email, simulation_group_id } = event.queryStringParameters;
+          const { student_email, simulation_group_id, patient_id } = event.queryStringParameters;
 
           try {
             // Get user_id from student email
@@ -1301,17 +1301,35 @@ exports.handler = async (event) => {
               }
               
               // Column exists, try to get data
-              empathyData = await sqlConnection`
-                SELECT m.empathy_evaluation
-                FROM "messages" m
-                JOIN "sessions" s ON m.session_id = s.session_id
-                JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
-                JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
-                WHERE e.user_id = ${userId}
-                AND e.simulation_group_id = ${simulation_group_id}
-                AND m.student_sent = true
-                AND m.empathy_evaluation IS NOT NULL;
-              `;
+              if (patient_id) {
+                // If patient_id is provided, filter by that specific patient
+                empathyData = await sqlConnection`
+                  SELECT m.empathy_evaluation
+                  FROM "messages" m
+                  JOIN "sessions" s ON m.session_id = s.session_id
+                  JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
+                  JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
+                  JOIN "patients" p ON si.patient_id = p.patient_id
+                  WHERE e.user_id = ${userId}
+                  AND e.simulation_group_id = ${simulation_group_id}
+                  AND p.patient_id = ${patient_id}
+                  AND m.student_sent = true
+                  AND m.empathy_evaluation IS NOT NULL;
+                `;
+              } else {
+                // If no patient_id, get all empathy data for the student in this simulation group
+                empathyData = await sqlConnection`
+                  SELECT m.empathy_evaluation
+                  FROM "messages" m
+                  JOIN "sessions" s ON m.session_id = s.session_id
+                  JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
+                  JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
+                  WHERE e.user_id = ${userId}
+                  AND e.simulation_group_id = ${simulation_group_id}
+                  AND m.student_sent = true
+                  AND m.empathy_evaluation IS NOT NULL;
+                `;
+              }
               
             } catch (error) {
               console.error("Error querying empathy data:", error);
@@ -1411,17 +1429,44 @@ exports.handler = async (event) => {
               `The student shows ${empathySummary} in their interactions.`;  
 
             // Get total interactions count
-            const totalInteractions = await sqlConnection`
-              SELECT COUNT(*) as count
-              FROM "messages" m
-              JOIN "sessions" s ON m.session_id = s.session_id
-              JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
-              JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
-              WHERE e.user_id = ${userId}
-              AND e.simulation_group_id = ${simulation_group_id}
-              AND m.student_sent = true;
-            `;
+            let totalInteractions;
+            if (patient_id) {
+              totalInteractions = await sqlConnection`
+                SELECT COUNT(*) as count
+                FROM "messages" m
+                JOIN "sessions" s ON m.session_id = s.session_id
+                JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
+                JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
+                JOIN "patients" p ON si.patient_id = p.patient_id
+                WHERE e.user_id = ${userId}
+                AND e.simulation_group_id = ${simulation_group_id}
+                AND p.patient_id = ${patient_id}
+                AND m.student_sent = true;
+              `;
+            } else {
+              totalInteractions = await sqlConnection`
+                SELECT COUNT(*) as count
+                FROM "messages" m
+                JOIN "sessions" s ON m.session_id = s.session_id
+                JOIN "student_interactions" si ON s.student_interaction_id = si.student_interaction_id
+                JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
+                WHERE e.user_id = ${userId}
+                AND e.simulation_group_id = ${simulation_group_id}
+                AND m.student_sent = true;
+              `;
+            }
 
+            // Get patient name if patient_id is provided
+            let patientName = null;
+            if (patient_id) {
+              const patientData = await sqlConnection`
+                SELECT patient_name FROM "patients" WHERE patient_id = ${patient_id};
+              `;
+              if (patientData.length > 0) {
+                patientName = patientData[0].patient_name;
+              }
+            }
+            
             response.statusCode = 200;
             response.body = JSON.stringify({
               overall_score: parseFloat(avgScore),
@@ -1434,7 +1479,8 @@ exports.handler = async (event) => {
               avg_language_communication: parseFloat(avgLang),
               avg_cognitive_empathy: parseFloat(avgCog),
               avg_affective_empathy: parseFloat(avgAff),
-              summary: summary.replace(/,\s*$/, '.').replace(/,\s*\./g, '.')
+              summary: summary.replace(/,\s*$/, '.').replace(/,\s*\./g, '.'),
+              patient_name: patientName
             });
           } catch (err) {
             response.statusCode = 500;

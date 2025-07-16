@@ -125,7 +125,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
   useEffect(() => {
     if (newMessage !== null) {
-      if (currentSessionId === session.session_id) {
+      if (currentSessionId === session?.session_id) {
         // Check if this message already exists in the messages array to prevent duplication
         const messageExists = messages.some(msg => 
           msg.message_id === newMessage.message_id || 
@@ -134,7 +134,17 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         );
         
         if (!messageExists) {
-          setMessages((prevItems) => [...prevItems, newMessage]);
+          // Only add the message if it doesn't already exist
+          setMessages((prevItems) => {
+            // Double-check for duplicates again to be extra safe
+            const isDuplicate = prevItems.some(msg => 
+              msg.message_id === newMessage.message_id || 
+              (msg.message_content === newMessage.message_content && 
+               msg.student_sent === newMessage.student_sent)
+            );
+            
+            return isDuplicate ? prevItems : [...prevItems, newMessage];
+          });
         }
       }
       setNewMessage(null);
@@ -262,6 +272,16 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
   async function retrieveKnowledgeBase(message, sessionId) {
     try {
+      // First check if this message already exists to avoid creating duplicates
+      const messageExists = messages.some(msg => 
+        !msg.student_sent && msg.message_content === message
+      );
+      
+      if (messageExists) {
+        console.log("Message already exists in chat, skipping API call");
+        return;
+      }
+      
       const authSession = await fetchAuthSession();
       const { email } = await fetchUserAttributes();
       const token = authSession.tokens.idToken
@@ -288,12 +308,25 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
         if (response.ok) {
           const data = await response.json();
-          setNewMessage(data[0]);
+          
+          // Double-check if this message already exists in the messages array
+          const messageExists = messages.some(msg => 
+            msg.message_id === data[0].message_id || 
+            (msg.message_content === data[0].message_content && 
+             !msg.student_sent)
+          );
+          
+          if (!messageExists) {
+            console.log("Adding new AI message to chat");
+            setNewMessage(data[0]);
+          } else {
+            console.log("Duplicate AI message detected, not adding to chat");
+          }
         } else {
-          console.error("Failed to retreive message:", response.statusText);
+          console.error("Failed to retrieve message:", response.statusText);
         }
       } catch (error) {
-        console.error("Error retreiving message:", error);
+        console.error("Error retrieving message:", error);
       }
     } catch (error) {
       console.error("Error retrieving message from knowledge base:", error);
@@ -729,7 +762,31 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       );
       if (response.ok) {
         const data = await response.json();
-        setMessages(data);
+        
+        // Remove any duplicate messages by message_id and content
+        const uniqueMessages = [];
+        const messageIds = new Set();
+        const messageContents = new Map(); // Track message content for student/AI separately
+        
+        // First sort by time_sent to ensure we keep the earliest messages
+        const sortedData = [...data].sort((a, b) => {
+          return new Date(a.time_sent) - new Date(b.time_sent);
+        });
+        
+        sortedData.forEach(message => {
+          // Create a unique key combining content and sender type
+          const contentKey = `${message.student_sent ? 'student' : 'ai'}-${message.message_content}`;
+          
+          // Check for duplicates by ID or content
+          if (!messageIds.has(message.message_id) && !messageContents.has(contentKey)) {
+            messageIds.add(message.message_id);
+            messageContents.set(contentKey, true);
+            uniqueMessages.push(message);
+          }
+        });
+        
+        console.log(`Filtered ${data.length} messages to ${uniqueMessages.length} unique messages`);
+        setMessages(uniqueMessages);
       } else {
         console.error("Failed to retreive session:", response.statusText);
         setMessages([]);
