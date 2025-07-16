@@ -427,7 +427,7 @@ const StudentDetails = () => {
               <Button
                 onClick={fetchEmpathySummary}
                 variant="contained"
-                color="secondary"
+                color="primary"
               >
                 View Empathy Coach Summary
               </Button>
