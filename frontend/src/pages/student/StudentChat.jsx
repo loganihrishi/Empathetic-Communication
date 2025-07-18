@@ -2,28 +2,40 @@ import { useEffect, useRef, useState } from "react";
 import AIMessage from "../../components/AIMessage";
 import Session from "../../components/Session";
 import StudentMessage from "../../components/StudentMessage";
+import VoiceConversation from "../../components/VoiceConversation";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
 import { fetchUserAttributes } from "aws-amplify/auth";
 import DraggableNotes from "./DraggableNotes";
 import FilesPopout from "./FilesPopout";
+import { socket } from "../../utils/socket";
+import {
+  startSpokenLLM,
+  stopSpokenLLM,
+  playAudio,
+} from "../../utils/voiceStream";
 
 import { signOut } from "aws-amplify/auth";
 
-
 import {
-  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+  Typography,
 } from "@mui/material";
-
 
 // Importing icons
 import DescriptionIcon from "@mui/icons-material/Description";
 import InfoIcon from "@mui/icons-material/Info";
-import KeyIcon from '@mui/icons-material/Key';
-
+import KeyIcon from "@mui/icons-material/Key";
+import MicIcon from "@mui/icons-material/Mic";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 
 // Importing l-mirage animation
-import { mirage } from 'ldrs';
+import { mirage } from "ldrs";
 mirage.register();
 
 // TypingIndicator using l-mirage
@@ -35,10 +47,6 @@ const TypingIndicator = ({ patientName }) => (
     </span>
   </div>
 );
-
-
-
-
 
 function titleCase(str) {
   if (typeof str !== "string") {
@@ -55,32 +63,29 @@ function titleCase(str) {
 const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const [novaStarted, setNovaStarted] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [novaTextInput, setNovaTextInput] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const [newMessage, setNewMessage] = useState(null);
   const [isAItyping, setIsAItyping] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isPatientInfoOpen, setIsPatientInfoOpen] = useState(false);
   const [isAnswerKeyOpen, setIsAnswerKeyOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
   const [patientInfoFiles, setPatientInfoFiles] = useState([]);
   const [isInfoLoading, setIsInfoLoading] = useState(false);
-
   const [answerKeyFiles, setAnswerKeyFiles] = useState([]);
   const [isAnswerLoading, setIsAnswerLoading] = useState(false);
-
   const [profilePicture, setProfilePicture] = useState({});
 
-
   const navigate = useNavigate();
-
 
   // Sidebar resizing logic
   const [sidebarWidth, setSidebarWidth] = useState(280);
@@ -103,6 +108,24 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", stopResizing);
   };
+
+  // Handle nova-started event once
+  useEffect(() => {
+    // Remove any existing listeners first
+    socket.off("nova-started");
+
+    // Add the listener
+    socket.on("nova-started", () => {
+      console.log("✅ Nova backend ready in StudentChat!");
+      setNovaStarted(true);
+      // Don't emit start-audio here, it's handled in voiceStream.js
+    });
+
+    // Cleanup
+    return () => {
+      socket.off("nova-started");
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -142,7 +165,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       try {
         const session = await fetchAuthSession();
         const { email } = await fetchUserAttributes();
-        const token = session.tokens.idToken
+        const token = session.tokens.idToken;
         const response = await fetch(
           `${
             import.meta.env.VITE_API_ENDPOINT
@@ -191,17 +214,114 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       .some((message) => !message.student_sent);
   };
 
+  useEffect(() => {
+    // Connect socket if not connected
+    if (!socket.connected) socket.connect();
+
+    // Define event handlers
+    const handleConnect = () => {
+      console.log("✅ WebSocket connected:", socket.id);
+    };
+
+    const handleDisconnect = () => {
+      console.log("❌ WebSocket disconnected");
+    };
+
+    const handleError = (error) => {
+      console.error("🔥 WebSocket connection error:", error);
+    };
+
+    const handleText = (data) => {
+      console.log("💬 Nova Sonic:", data.text);
+    };
+
+    const handleAudio = (data) => {
+      console.log("🎵 Received audio chunk, length:", data.data?.length || 0);
+      if (data.data) {
+        console.log("🔊 Playing audio from StudentChat");
+        playAudio(data.data);
+      }
+    };
+
+    // Remove any existing listeners before adding new ones
+    socket.off("connect");
+    socket.off("disconnect");
+    socket.off("connect_error");
+    socket.off("text-message");
+    socket.off("audio-chunk");
+
+    // Add listeners
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleError);
+    socket.on("text-message", handleText);
+    socket.on("audio-chunk", handleAudio);
+
+    // Cleanup function
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleError);
+      socket.off("text-message", handleText);
+      socket.off("audio-chunk", handleAudio);
+    };
+  }, []);
+
+  async function playNovaPcmBase64Audio(base64Data) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)(
+      { sampleRate: 24000 }
+    ); // Nova uses 24kHz output
+
+    const rawData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+    const audioBuffer = audioContext.createBuffer(1, rawData.length / 2, 24000); // mono, 16-bit = 2 bytes/sample
+
+    const channelData = audioBuffer.getChannelData(0);
+    for (let i = 0; i < channelData.length; i++) {
+      const sample = (rawData[i * 2 + 1] << 8) | rawData[i * 2]; // Little-endian
+      channelData[i] =
+        sample > 32767 ? (sample - 65536) / 32768 : sample / 32768;
+    }
+
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start();
+  }
+
+  function convertFloat32ToInt16(buffer) {
+    const l = buffer.length;
+    const buf = new Int16Array(l);
+    for (let i = 0; i < l; i++) {
+      let s = Math.max(-1, Math.min(1, buffer[i]));
+      buf[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return new Uint8Array(buf.buffer);
+  }
+
+  // Send text to Nova Sonic
+  function sendTextToNova() {
+    if (novaTextInput.trim()) {
+      console.log("📝 Sending text to Nova:", novaTextInput);
+      socket.emit("text-input", { text: novaTextInput });
+      setNovaTextInput("");
+    }
+  }
+
   const fetchFiles = async () => {
     setIsInfoLoading(true);
     setIsAnswerLoading(true);
     try {
       const session = await fetchAuthSession();
       const token = session.tokens.idToken;
-  
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}student/get_all_files?simulation_group_id=${encodeURIComponent(
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }student/get_all_files?simulation_group_id=${encodeURIComponent(
           group.simulation_group_id
-        )}&patient_id=${encodeURIComponent(patient.patient_id)}&patient_name=${encodeURIComponent(patient.patient_name)}`,
+        )}&patient_id=${encodeURIComponent(
+          patient.patient_id
+        )}&patient_name=${encodeURIComponent(patient.patient_name)}`,
         {
           method: "GET",
           headers: {
@@ -210,7 +330,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           },
         }
       );
-  
+
       if (response.ok) {
         const data = await response.json();
         console.log(data);
@@ -218,7 +338,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           ([fileName, fileDetails]) => ({
             name: fileName,
             url: fileDetails.url,
-            type: fileName.split('.').pop().toLowerCase(),
+            type: fileName.split(".").pop().toLowerCase(),
             metadata: fileDetails.metadata,
           })
         );
@@ -226,7 +346,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           ([fileName, fileDetails]) => ({
             name: fileName,
             url: fileDetails.url,
-            type: fileName.split('.').pop().toLowerCase(),
+            type: fileName.split(".").pop().toLowerCase(),
             metadata: fileDetails.metadata,
           })
         );
@@ -235,11 +355,14 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         setPatientInfoFiles(infoFiles);
         setAnswerKeyFiles(answerKeyFiles);
       } else {
-        console.error("Failed to fetch patient info files:", response.statusText);
+        console.error(
+          "Failed to fetch patient info files:",
+          response.statusText
+        );
       }
     } catch (error) {
       console.error("Error fetching patient info files:", error);
-    } finally {      
+    } finally {
       setIsInfoLoading(false);
       setIsAnswerLoading(false);
     }
@@ -255,14 +378,16 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     try {
       const authSession = await fetchAuthSession();
       const { email } = await fetchUserAttributes();
-      const token = authSession.tokens.idToken
+      const token = authSession.tokens.idToken;
       try {
         const response = await fetch(
           `${
             import.meta.env.VITE_API_ENDPOINT
           }student/create_ai_message?session_id=${encodeURIComponent(
             sessionId
-          )}&email=${encodeURIComponent(email)}&simulation_group_id=${encodeURIComponent(
+          )}&email=${encodeURIComponent(
+            email
+          )}&simulation_group_id=${encodeURIComponent(
             group.simulation_group_id
           )}&patient_id=${encodeURIComponent(patient.patient_id)}`,
           {
@@ -323,7 +448,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         return fetchAuthSession();
       })
       .then((authSession) => {
-        authToken = authSession.tokens.idToken
+        authToken = authSession.tokens.idToken;
         return fetchUserAttributes();
       })
       .then(({ email }) => {
@@ -493,7 +618,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
     return fetchAuthSession()
       .then((session) => {
-        authToken = session.tokens.idToken
+        authToken = session.tokens.idToken;
         return fetchUserAttributes();
       })
       .then(({ email }) => {
@@ -577,7 +702,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     try {
       const authSession = await fetchAuthSession();
       const { email } = await fetchUserAttributes();
-      const token = authSession.tokens.idToken
+      const token = authSession.tokens.idToken;
       const response = await fetch(
         `${
           import.meta.env.VITE_API_ENDPOINT
@@ -619,7 +744,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     // remember to set is submitting true/false
     const authSession = await fetchAuthSession();
     const { email } = await fetchUserAttributes();
-    const token = authSession.tokens.idToken
+    const token = authSession.tokens.idToken;
     try {
       const response = await fetch(
         `${
@@ -703,7 +828,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     try {
       const authSession = await fetchAuthSession();
       const { email } = await fetchUserAttributes();
-      const token = authSession.tokens.idToken
+      const token = authSession.tokens.idToken;
       const response = await fetch(
         `${
           import.meta.env.VITE_API_ENDPOINT
@@ -736,7 +861,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     }
   }, [session]);
 
-    // Open the confirmation dialog
+  // Open the confirmation dialog
   const handleOpenConfirm = () => {
     setIsConfirmOpen(true);
   };
@@ -756,133 +881,178 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     return <div>Loading...</div>;
   }
 
-    return (
-      
-      <div className="flex flex-row h-screen">
-        {/* Sidebar */}
+  return (
+    <div className="flex flex-row h-screen">
+      {/* Sidebar */}
+      <div
+        className="flex flex-col bg-[#99DFB2] h-full"
+        style={{ width: sidebarWidth }}
+      >
+        {/* Back Button and Patient Name */}
         <div
-          className="flex flex-col bg-[#99DFB2] h-full"
-          style={{ width: sidebarWidth }}
+          className="flex flex-row mt-3 mb-3 ml-4"
+          style={{
+            justifyContent: sidebarWidth <= 160 ? "" : "flex-start",
+          }}
         >
-          {/* Back Button and Patient Name */}
+          <img
+            onClick={() => handleBack()}
+            className="w-8 h-8 cursor-pointer"
+            src="./ArrowCircleDownRounded.png"
+            alt="back"
+          />
+          {sidebarWidth > 160 && (
+            <div className="ml-3 pt-0.5 text-black font-roboto font-bold text-lg">
+              {titleCase(patient.patient_name)} {/* Patient Name */}
+              <span className="text-sm ml-1">
+                ({patient.patient_gender}, {patient.patient_age}){" "}
+                {/* Patient Gender and Age */}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* New Chat Button */}
+        <button
+          onClick={() => {
+            if (!creatingSession) {
+              setCreatingSession(true);
+              handleNewChat();
+            }
+          }}
+          className="border border-black ml-8 mr-8 mt-0 mb-0 bg-transparent pt-1.5 pb-1.5 hover:scale-105 transition-transform duration-300"
+        >
           <div
-            className="flex flex-row mt-3 mb-3 ml-4"
+            className="flex items-center gap-2"
             style={{
-              justifyContent: sidebarWidth <= 160 ? "" : "flex-start",
+              justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
             }}
           >
-            <img
-              onClick={() => handleBack()}
-              className="w-8 h-8 cursor-pointer"
-              src="./ArrowCircleDownRounded.png"
-              alt="back"
-            />
+            <div className="text-md font-roboto text-[#212427]">+</div>
             {sidebarWidth > 160 && (
-              <div className="ml-3 pt-0.5 text-black font-roboto font-bold text-lg">
-                {titleCase(patient.patient_name)} {/* Patient Name */}
-                <span className="text-sm ml-1">
-                  ({patient.patient_gender}, {patient.patient_age}) {/* Patient Gender and Age */}
-                </span>
+              <div className="text-md font-roboto font-bold text-[#212427]">
+                New Chat
               </div>
-            
-            
             )}
           </div>
+        </button>
 
-          {/* New Chat Button */}
-          <button
-            onClick={() => {
-              if (!creatingSession) {
-                setCreatingSession(true);
-                handleNewChat();
-              }
+        <button
+          onClick={() => {
+            if (isRecording) {
+              stopSpokenLLM();
+              setIsRecording(false);
+            } else {
+              const voice_id = "lennart";
+              startSpokenLLM(voice_id);
+              setIsRecording(true);
+            }
+          }}
+          className={`border border-black ml-8 mr-8 mt-0 mb-0 pt-1.5 pb-1.5 hover:scale-105 transition-transform duration-300 ${
+            isRecording ? "bg-red-500 text-white" : "bg-transparent"
+          }`}
+        >
+          <div
+            className="flex items-center gap-2"
+            style={{
+              justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
             }}
-            className="border border-black ml-8 mr-8 mt-0 mb-0 bg-transparent pt-1.5 pb-1.5 hover:scale-105 transition-transform duration-300"
+          >
+            {sidebarWidth > 160 && (
+              <div className="text-md font-roboto font-bold">
+                {isRecording ? "🎤 Stop Voice Chat" : "🎤 Start Voice Chat"}
+              </div>
+            )}
+          </div>
+        </button>
+
+        {/* Text input for Nova Sonic */}
+        <div className="mx-8 mt-2">
+          <input
+            type="text"
+            value={novaTextInput}
+            onChange={(e) => setNovaTextInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendTextToNova()}
+            placeholder="Type to Nova Sonic..."
+            className="w-full p-2 text-sm border border-black bg-white"
+          />
+          <button
+            onClick={sendTextToNova}
+            className="w-full mt-1 p-1 bg-blue-500 text-white text-sm hover:bg-blue-600"
+          >
+            Send Text
+          </button>
+        </div>
+
+        <div className="my-4">
+          <hr className="border-t border-black" />
+        </div>
+
+        {/* Session List */}
+        <div className="flex-grow overflow-y-auto mt-2 mb-6">
+          {sessions
+            .slice()
+            .reverse()
+            .map((iSession) => (
+              <Session
+                key={iSession.session_id}
+                text={sidebarWidth > 160 ? iSession.session_name : ""}
+                session={iSession}
+                setSession={setSession}
+                deleteSession={handleDeleteSession}
+                selectedSession={session}
+                setMessages={setMessages}
+                setSessions={setSessions}
+                sessions={sessions}
+              />
+            ))}
+        </div>
+
+        {/* Notes and Patient Info Buttons */}
+        <div className="mt-auto px-8 mb-8">
+          <button
+            onClick={() => setIsNotesOpen(true)}
+            className="border border-black bg-transparent pt-2 pb-2 w-full hover:scale-105 transition-transform duration-300"
           >
             <div
-              className="flex items-center gap-2"
+              className="flex items-center justify-center"
               style={{
                 justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
               }}
             >
-              <div className="text-md font-roboto text-[#212427]">+</div>
+              <DescriptionIcon
+                className={sidebarWidth <= 160 ? "mx-auto" : "mr-2"}
+                style={{ color: "black" }}
+              />
+              {sidebarWidth > 160 && <span className="text-black">Notes</span>}
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsPatientInfoOpen(true)}
+            className="border border-black bg-transparent pt-2 pb-2 w-full mt-4 hover:scale-105 transition-transform duration-300"
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
+              }}
+            >
+              <InfoIcon
+                className={sidebarWidth <= 160 ? "mx-auto" : "mr-2"}
+                style={{ color: "black" }}
+              />
               {sidebarWidth > 160 && (
-                <div className="text-md font-roboto font-bold text-[#212427]">
-                  New Chat
-                </div>
+                <span className="text-black">Patient Info</span>
               )}
             </div>
           </button>
 
-          <div className="my-4">
-            <hr className="border-t border-black" />
-          </div>
-
-          {/* Session List */}
-          <div className="flex-grow overflow-y-auto mt-2 mb-6">
-            {sessions
-              .slice()
-              .reverse()
-              .map((iSession) => (
-                <Session
-                  key={iSession.session_id}
-                  text={sidebarWidth > 160 ? iSession.session_name : ""}
-                  session={iSession}
-                  setSession={setSession}
-                  deleteSession={handleDeleteSession}
-                  selectedSession={session}
-                  setMessages={setMessages}
-                  setSessions={setSessions}
-                  sessions={sessions}
-                />
-              ))}
-          </div>
-
-          {/* Notes and Patient Info Buttons */}
-          <div className="mt-auto px-8 mb-8">
-            <button
-              onClick={() => setIsNotesOpen(true)}
-              className="border border-black bg-transparent pt-2 pb-2 w-full hover:scale-105 transition-transform duration-300"
-            >
-              <div
-                className="flex items-center justify-center"
-                style={{
-                  justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
-                }}
-              >
-                <DescriptionIcon
-                  className={sidebarWidth <= 160 ? "mx-auto" : "mr-2"}
-                  style={{ color: "black" }}
-                />
-                {sidebarWidth > 160 && <span className="text-black">Notes</span>}
-              </div>
-            </button>
-
-            <button
-              onClick={() => setIsPatientInfoOpen(true)}
-              className="border border-black bg-transparent pt-2 pb-2 w-full mt-4 hover:scale-105 transition-transform duration-300"
-            >
-              <div
-                className="flex items-center justify-center"
-                style={{
-                  justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
-                }}
-              >
-                <InfoIcon
-                  className={sidebarWidth <= 160 ? "mx-auto" : "mr-2"}
-                  style={{ color: "black" }}
-                />
-                {sidebarWidth > 160 && (
-                  <span className="text-black">Patient Info</span>
-                )}
-              </div>
-            </button>
-            
-            {/* Reveal LLM Patient Diagnosis Button */}
-            <button
-              onClick={handleOpenConfirm}
-              className="border border-black bg-transparent pt-2 pb-2 w-full mt-4 hover:scale-105 transition-transform duration-300"
-            >
+          {/* Reveal LLM Patient Diagnosis Button */}
+          <button
+            onClick={handleOpenConfirm}
+            className="border border-black bg-transparent pt-2 pb-2 w-full mt-4 hover:scale-105 transition-transform duration-300"
+          >
             <div
               className="flex items-center justify-center"
               style={{
@@ -898,128 +1068,132 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
               )}
             </div>
           </button>
-          
+        </div>
+      </div>
 
-          </div>
+      {/* Sidebar Resize Handle */}
+      <div
+        onMouseDown={startResizing}
+        style={{
+          width: "5px",
+          cursor: "col-resize",
+          height: "100vh",
+          backgroundColor: "#F8F9FD",
+          position: "relative",
+        }}
+      />
+
+      {/* Chat Area */}
+      <div className="flex flex-col-reverse flex-grow bg-[#F8F9FD]">
+        {/* Sign-Out Button */}
+        <div className="absolute top-4 right-4">
+          <button
+            type="button"
+            className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition duration-200"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </button>
         </div>
 
-        {/* Sidebar Resize Handle */}
-        <div
-          onMouseDown={startResizing}
-          style={{
-            width: "5px",
-            cursor: "col-resize",
-            height: "100vh",
-            backgroundColor: "#F8F9FD",
-            position: "relative",
-          }}
-        />
-
-        {/* Chat Area */}
-        <div className="flex flex-col-reverse flex-grow bg-[#F8F9FD]">
-          {/* Sign-Out Button */}
-          <div className="absolute top-4 right-4">
-            <button
-              type="button"
-              className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition duration-200"
-              onClick={handleSignOut}
-            >
-              Sign Out
-            </button>
-          </div>
-
-
-
-          <div className="flex items-center justify-between border bg-[#f2f0f0] border-[#8C8C8C] py-2 mb-12 mx-20">
-            <textarea
-              ref={textareaRef}
-              className="text-sm w-full outline-none bg-[#f2f0f0] text-black resize-none max-h-32 ml-2 mr-2"
-              style={{ maxHeight: "8rem" }}
-              maxLength={2096}
-            />
-            <img
-              onClick={handleSubmit}
-              className="cursor-pointer w-4 h-4 mr-5"
-              src="./send.png"
-              alt="send"
-              style={{ filter: "invert(58%) sepia(80%) saturate(600%) hue-rotate(100deg) brightness(90%) contrast(95%)" }} 
-            />
-          </div>
-          <div className="flex-grow overflow-y-auto p-4 h-full">
-            {messages.map((message, index) =>
-              message.student_sent ? (
-                <StudentMessage
-                  key={message.message_id}
-                  message={message.message_content}
-                  isMostRecent={getMostRecentStudentMessageIndex() === index}
-                  onDelete={() => handleDeleteMessage(message)}
-                  hasAiMessageAfter={() => hasAiMessageAfter(
+        <div className="flex items-center justify-between border bg-[#f2f0f0] border-[#8C8C8C] py-2 mb-12 mx-20">
+          <textarea
+            ref={textareaRef}
+            className="text-sm w-full outline-none bg-[#f2f0f0] text-black resize-none max-h-32 ml-2 mr-2"
+            style={{ maxHeight: "8rem" }}
+            maxLength={2096}
+          />
+          <img
+            onClick={handleSubmit}
+            className="cursor-pointer w-4 h-4 mr-5"
+            src="./send.png"
+            alt="send"
+            style={{
+              filter:
+                "invert(58%) sepia(80%) saturate(600%) hue-rotate(100deg) brightness(90%) contrast(95%)",
+            }}
+          />
+        </div>
+        <div className="flex-grow overflow-y-auto p-4 h-full">
+          {messages.map((message, index) =>
+            message.student_sent ? (
+              <StudentMessage
+                key={message.message_id}
+                message={message.message_content}
+                isMostRecent={getMostRecentStudentMessageIndex() === index}
+                onDelete={() => handleDeleteMessage(message)}
+                hasAiMessageAfter={() =>
+                  hasAiMessageAfter(
                     messages,
                     getMostRecentStudentMessageIndex()
-                  )}
-                />
-              ) : (
-                <AIMessage
-                  key={message.message_id}
-                  message={message.message_content}
-                  profilePicture={profilePicture} // Pass profile picture URL to AIMessage
-                  name={patient?.patient_name}      // Pass patient's name to display as fallback
-                />
-              )
-            )}
+                  )
+                }
+              />
+            ) : (
+              <AIMessage
+                key={message.message_id}
+                message={message.message_content}
+                profilePicture={profilePicture} // Pass profile picture URL to AIMessage
+                name={patient?.patient_name} // Pass patient's name to display as fallback
+              />
+            )
+          )}
 
-            {/* TypingIndicator: Pass patient's name */}
-            {isAItyping && <TypingIndicator patientName={patient?.patient_name} />}
+          {/* TypingIndicator: Pass patient's name */}
+          {isAItyping && (
+            <TypingIndicator patientName={patient?.patient_name} />
+          )}
 
-            <div ref={messagesEndRef} />
-          </div>
-          <div className="font-roboto font-bold text-2xl text-center mt-6 mb-6 text-black">
-            AI Patient
-          </div>
+          <div ref={messagesEndRef} />
         </div>
+        <div className="font-roboto font-bold text-2xl text-center mt-6 mb-6 text-black">
+          AI Patient
+        </div>
+      </div>
 
-        {/* Draggable Notes */}
-        {isNotesOpen && (
-          <DraggableNotes
-            isOpen={isNotesOpen}
-            sessionId={session.session_id}
-            onClose={() => setIsNotesOpen(false)}
-          />
-        )}
-
-        <FilesPopout
-          open={isPatientInfoOpen}
-          onClose={() => setIsPatientInfoOpen(false)}
-          files={patientInfoFiles}
-          isLoading={isInfoLoading}
+      {/* Draggable Notes */}
+      {isNotesOpen && (
+        <DraggableNotes
+          isOpen={isNotesOpen}
+          sessionId={session.session_id}
+          onClose={() => setIsNotesOpen(false)}
         />
+      )}
 
-        <FilesPopout
-          open={isAnswerKeyOpen}
-          onClose={() => setIsAnswerKeyOpen(false)}
-          files={answerKeyFiles}
-          isLoading={isAnswerLoading}
-        />
+      <FilesPopout
+        open={isPatientInfoOpen}
+        onClose={() => setIsPatientInfoOpen(false)}
+        files={patientInfoFiles}
+        isLoading={isInfoLoading}
+      />
 
-        {/* Confirmation Dialog for Reveal */}
-        <Dialog open={isConfirmOpen} onClose={handleCloseConfirm}>
-          <DialogTitle>Confirm Reveal</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to reveal the Patient's Diagnosis? This action will show the entire answer.
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseConfirm} color="primary">
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmReveal} color="error">
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </div> //
-    );
-  };
-  
+      <FilesPopout
+        open={isAnswerKeyOpen}
+        onClose={() => setIsAnswerKeyOpen(false)}
+        files={answerKeyFiles}
+        isLoading={isAnswerLoading}
+      />
+
+      {/* Confirmation Dialog for Reveal */}
+      <Dialog open={isConfirmOpen} onClose={handleCloseConfirm}>
+        <DialogTitle>Confirm Reveal</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to reveal the Patient's Diagnosis? This action
+            will show the entire answer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirm} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmReveal} color="error">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </div> //
+  );
+};
+
 export default StudentChat;
