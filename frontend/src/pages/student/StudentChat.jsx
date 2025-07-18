@@ -937,53 +937,6 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           </div>
         </button>
 
-        <button
-          onClick={() => {
-            if (isRecording) {
-              stopSpokenLLM();
-              setIsRecording(false);
-            } else {
-              const voice_id = "lennart";
-              startSpokenLLM(voice_id);
-              setIsRecording(true);
-            }
-          }}
-          className={`border border-black ml-8 mr-8 mt-0 mb-0 pt-1.5 pb-1.5 hover:scale-105 transition-transform duration-300 ${
-            isRecording ? "bg-red-500 text-white" : "bg-transparent"
-          }`}
-        >
-          <div
-            className="flex items-center gap-2"
-            style={{
-              justifyContent: sidebarWidth <= 160 ? "center" : "flex-start",
-            }}
-          >
-            {sidebarWidth > 160 && (
-              <div className="text-md font-roboto font-bold">
-                {isRecording ? "🎤 Stop Voice Chat" : "🎤 Start Voice Chat"}
-              </div>
-            )}
-          </div>
-        </button>
-
-        {/* Text input for Nova Sonic */}
-        <div className="mx-8 mt-2">
-          <input
-            type="text"
-            value={novaTextInput}
-            onChange={(e) => setNovaTextInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendTextToNova()}
-            placeholder="Type to Nova Sonic..."
-            className="w-full p-2 text-sm border border-black bg-white"
-          />
-          <button
-            onClick={sendTextToNova}
-            className="w-full mt-1 p-1 bg-blue-500 text-white text-sm hover:bg-blue-600"
-          >
-            Send Text
-          </button>
-        </div>
-
         <div className="my-4">
           <hr className="border-t border-black" />
         </div>
@@ -1097,15 +1050,40 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         </div>
 
         <div className="flex items-center justify-between border bg-[#f2f0f0] border-[#8C8C8C] py-2 mb-12 mx-20">
+          {/* Mic Button (left side) */}
+          <button
+            onClick={() => {
+              if (isRecording) {
+                stopSpokenLLM();
+                setIsRecording(false);
+              } else {
+                const voice_id = "lennart";
+                startSpokenLLM(voice_id);
+                setIsRecording(true);
+              }
+            }}
+            className={`ml-2 mr-2 transition duration-200 focus:outline-none focus:ring-0 hover:outline-none hover:ring-0 border-none ${
+              isRecording
+                ? "text-red-600 hover:text-red-800"
+                : "text-gray-600 hover:text-black"
+            }`}
+            style={{ backgroundColor: "transparent", border: "none" }}
+          >
+            <MicIcon style={{ fontSize: 24 }} />
+          </button>
+
+          {/* Textarea */}
           <textarea
             ref={textareaRef}
-            className="text-sm w-full outline-none bg-[#f2f0f0] text-black resize-none max-h-32 ml-2 mr-2"
+            className="flex-grow text-sm outline-none bg-[#f2f0f0] text-black resize-none max-h-32"
             style={{ maxHeight: "8rem" }}
             maxLength={2096}
           />
+
+          {/* Send Button (right side) */}
           <img
             onClick={handleSubmit}
-            className="cursor-pointer w-4 h-4 mr-5"
+            className="cursor-pointer w-5 h-5 ml-3 mr-4"
             src="./send.png"
             alt="send"
             style={{
@@ -1114,6 +1092,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             }}
           />
         </div>
+
         <div className="flex-grow overflow-y-auto p-4 h-full">
           {messages.map((message, index) =>
             message.student_sent ? (
