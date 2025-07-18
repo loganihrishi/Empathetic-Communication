@@ -340,11 +340,15 @@ async def handle_stdin(nova_client):
         try:
             msg = json.loads(line.decode("utf-8"))
             if msg["type"] == "audio":
+                print("🎤 Received audio input from stdin", flush=True)
                 audio_bytes = base64.b64decode(msg["data"])
                 await nova_client.send_audio_chunk(audio_bytes)
             elif msg["type"] == "start_audio":
+                print("🎬 Received start_audio signal", flush=True)
                 await nova_client.start_audio_input()
+                print("🎤 Started audio input", flush=True)
             elif msg["type"] == "end_audio":
+                print("🎬 Received end_audio signal", flush=True)
                 await nova_client.end_audio_input()
         except Exception as e:
             print(f"❌ Failed to process stdin input: {e}", flush=True)
@@ -354,6 +358,7 @@ async def main():
     await nova_client.start_session()
 
     print("Nova session started. Listening for stdin input...")
+    
     
 
     stdin_task = asyncio.create_task(handle_stdin(nova_client))

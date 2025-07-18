@@ -90,6 +90,10 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
   // Sidebar resizing logic
   const [sidebarWidth, setSidebarWidth] = useState(280);
+  let audioContext;
+  let processor;
+  let input;
+  let globalStream;
 
   const handleMouseMove = (e) => {
     const newWidth = e.clientX; // Get the new width based on the mouse position
@@ -237,67 +241,55 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   }, []);
 
   // Start Nova Sonic session
-  async function startSpokenLLM() {
-    console.log("🚀 Starting Nova Sonic session");
-    console.log("Socket URL:", import.meta.env.VITE_SOCKET_URL);
-    console.log("Socket connected:", socket.connected);
+  function startSpokenLLM() {
+    const bufferSize = 4096;
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+      sampleRate: 16000,
+    });
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        globalStream = stream;
+        input = audioContext.createMediaStreamSource(stream);
+        processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const arrayBuffer = reader.result;
-            const uint8Array = new Uint8Array(arrayBuffer);
-            const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
-            socket.emit("audio-input", { data: base64 });
-          };
-          reader.readAsArrayBuffer(event.data);
-        }
-      };
+        processor.onaudioprocess = (e) => {
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcmData = convertFloat32ToInt16(inputData);
+          const base64 = btoa(String.fromCharCode.apply(null, pcmData));
+          socket.emit("audio-input", { data: base64 });
+        };
 
-      recorder.onstop = () => {
-        socket.emit("end-audio");
-      };
+        input.connect(processor);
+        processor.connect(audioContext.destination);
 
-      // Store recorder for later use
-      mediaRecorderRef.current = recorder;
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-
-      // Tell server to start Nova
-      socket.emit("start-nova-sonic");
-      console.log("📡 Emitted start-nova-sonic event");
-    } catch (error) {
-      console.error("🎤 Microphone access denied:", error);
-    }
+        socket.emit("start-nova-sonic");
+      })
+      .catch((err) => {
+        console.error("🎤 Microphone access denied:", err);
+      });
   }
 
+  function convertFloat32ToInt16(buffer) {
+    const l = buffer.length;
+    const buf = new Int16Array(l);
+    for (let i = 0; i < l; i++) {
+      let s = Math.max(-1, Math.min(1, buffer[i]));
+      buf[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return new Uint8Array(buf.buffer);
+  }
+
+  // In your component, hook into nova-started event
   useEffect(() => {
     const handleNovaStarted = () => {
       console.log("✅ Nova backend ready!");
-      const recorder = mediaRecorderRef.current;
-      if (recorder && recorder.state === "inactive") {
-        recorder.start(250); // Stream every 250ms
-        console.log("🎙️ Recording started");
-      } else {
-        console.warn("📛 Recorder is not ready or already active");
-      }
+      socket.emit("start-audio");
     };
-
-    socket.on("nova-started", () => {
-      try {
-        handleNovaStarted();
-      } catch (err) {
-        console.error("Nova started handler failed:", err);
-      }
-    });
-
+    socket.on("nova-started", handleNovaStarted);
     return () => {
-      socket.off("nova-started");
+      socket.off("nova-started", handleNovaStarted);
     };
   }, []);
 

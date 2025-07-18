@@ -5,6 +5,7 @@ import time
 import logging
 import os
 import json
+import wave
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +42,7 @@ class AudioDebugger:
                 return
 
             try:
-                import simpleaudio as sa
+                
                 audio_bytes = base64.b64decode(audio_data)
 
                 # Save to file for inspection
@@ -74,28 +75,36 @@ class AudioDebugger:
             logger.error(f"❌ Connection error: {e}")
             return False
     
-    async def send_test_audio(self):
-        """Send a test audio chunk to the server"""
-        # Create a simple sine wave audio (1 second of 440Hz tone)
-        import math
-        import struct
-        
-        sample_rate = 16000
-        duration = 1.0  # seconds
-        frequency = 440  # Hz
-        
-        # Generate sine wave
-        samples = []
-        for i in range(int(sample_rate * duration)):
-            sample = int(32767 * math.sin(2 * math.pi * frequency * i / sample_rate))
-            samples.append(struct.pack('<h', sample))
-        
-        audio_bytes = b''.join(samples)
-        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
-        
-        logger.info(f"🎤 Sending test audio, size: {len(audio_bytes)} bytes")
-        await self.sio.emit("audio-input", {"data": audio_b64})
-        logger.info("✅ Test audio sent")
+
+
+    async def send_test_audio(self, wav_path="cdk/socket-server/sample.wav"):
+        """Send audio data from a WAV file to the server"""
+        try:
+            print("📂 Files in current directory:", os.listdir("."))
+            with wave.open(wav_path, "rb") as wav:
+                channels = wav.getnchannels()
+                sample_width = wav.getsampwidth()
+                frame_rate = wav.getframerate()
+                frames = wav.readframes(wav.getnframes())
+
+            logger.info(f"🎧 Loaded WAV file: {wav_path}")
+            logger.info(f"  Channels: {channels}")
+            logger.info(f"  Sample Width: {sample_width * 8} bits")
+            logger.info(f"  Frame Rate: {frame_rate} Hz")
+            logger.info(f"  Total Samples: {len(frames)}")
+
+            # Validate audio format
+            if channels != 1 or sample_width != 2:
+                raise ValueError("WAV file must be mono, 16-bit, 16kHz PCM.")
+
+            audio_b64 = base64.b64encode(frames).decode("utf-8")
+            await self.sio.emit("start-audio")
+            await asyncio.sleep(0.1)  # slight delay to ensure Nova is listening
+            await self.sio.emit("audio-input", {"data": audio_b64})
+            logger.info("✅ WAV audio sent to Nova")
+        except Exception as e:
+            logger.error(f"❌ Failed to send WAV audio: {e}")
+
         
     async def send_text(self, text):
         """Send a text message to the server"""
