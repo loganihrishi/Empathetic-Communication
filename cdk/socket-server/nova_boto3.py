@@ -42,7 +42,7 @@ class NovaSonic:
         if creds.token:
             os.environ['AWS_SESSION_TOKEN'] = creds.token
 
-    def __init__(self, model_id='amazon.nova-sonic-v1:0', region='us-east-1', socket_client=None):
+    def __init__(self, model_id='amazon.nova-sonic-v1:0', region='us-east-1', socket_client=None, voice_id=None):
         self.refresh_env_credentials()
         self.model_id = model_id
         self.region = region
@@ -56,6 +56,7 @@ class NovaSonic:
         self.audio_queue = asyncio.Queue()
         self.role = None
         self.display_assistant_text = False  # maybe change later?
+        self.voice_id = voice_id  # Store the voice ID passed from frontend
 
     def _init_client(self):
         """Initialize the Bedrock Client for Nova"""
@@ -111,7 +112,10 @@ class NovaSonic:
         
         # Send prompt start event
         voice_ids = {"feminine": ["amy", "tiffany", "lupe"], "masculine": ["matthew", "carlos"]}
-
+        
+        # Use the voice ID from frontend if provided, otherwise select a random feminine voice
+        selected_voice = self.voice_id if self.voice_id else random.choice(voice_ids['feminine'])
+        
         prompt_start = f'''
         {{
           "event": {{
@@ -125,14 +129,14 @@ class NovaSonic:
                 "sampleRateHertz": 24000,
                 "sampleSizeBits": 16,
                 "channelCount": 1,
-                "voiceId": "amy",
+                "voiceId": "{selected_voice}",
                 "encoding": "base64",
                 "audioType": "SPEECH"
               }}
             }}
           }}
         }}
-        ''' # Using a fixed voice ID for reliability
+        ''' # Using the selected voice ID
 
         await self.send_event(prompt_start)
 
@@ -350,17 +354,49 @@ async def handle_stdin(nova_client):
             elif msg["type"] == "end_audio":
                 print("🎬 Received end_audio signal", flush=True)
                 await nova_client.end_audio_input()
+            elif msg["type"] == "set_voice":
+                voice_id = msg.get("voice_id")
+                print(f"🎭 Received voice change request: {voice_id}", flush=True)
+                nova_client.voice_id = voice_id
+                print(f"🎭 Voice set to: {nova_client.voice_id}", flush=True)
+                # Force a restart of the session with the new voice
+                if nova_client.is_active:
+                    print("Restarting session with new voice", flush=True)
+                    await nova_client.end_session()
+                    await nova_client.start_session()
         except Exception as e:
             print(f"❌ Failed to process stdin input: {e}", flush=True)
 
 async def main():
+    # Initialize with no voice_id, will be set by frontend
     nova_client = NovaSonic()
+    
+    # First listen for any initial configuration from stdin
+    # This allows the frontend to set the voice before starting the session
+    reader = asyncio.StreamReader()
+    loop = asyncio.get_event_loop()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+    
+    # Wait for initial configuration for a short time
+    try:
+        # Set a timeout for initial configuration
+        line = await asyncio.wait_for(reader.readline(), 2.0)
+        if line:
+            try:
+                msg = json.loads(line.decode("utf-8"))
+                if msg["type"] == "set_voice":
+                    print(f"🎭 Setting initial voice: {msg.get('voice_id')}", flush=True)
+                    nova_client.voice_id = msg.get("voice_id")
+            except Exception as e:
+                print(f"❌ Failed to process initial config: {e}", flush=True)
+    except asyncio.TimeoutError:
+        print("No initial configuration received, using default voice", flush=True)
+    
+    # Start the session with the configured voice
     await nova_client.start_session()
-
     print("Nova session started. Listening for stdin input...")
     
-    
-
     stdin_task = asyncio.create_task(handle_stdin(nova_client))
     await stdin_task
 

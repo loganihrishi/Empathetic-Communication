@@ -44,8 +44,9 @@ io.on("connection", (socket) => {
     console.error("🔌 SOCKET ERROR:", error);
   });
 
-  socket.on("start-nova-sonic", async () => {
+  socket.on("start-nova-sonic", async (config = {}) => {
     console.log("🚀 Starting Nova Sonic session for client:", socket.id);
+    console.log("🎙️ Voice configuration:", config);
 
     if (novaProcess) {
       console.log("⚠️ Killing existing Nova process");
@@ -58,14 +59,32 @@ io.on("connection", (socket) => {
     });
 
     console.log("📡 Nova process spawned with PID:", novaProcess.pid);
+    
+    // Send voice configuration if provided
+    if (config.voice_id) {
+      console.log(`🎙️ Setting voice to: ${config.voice_id}`);
+      setTimeout(() => {
+        if (novaProcess && novaProcess.stdin.writable) {
+          const voiceConfig = JSON.stringify({ 
+            type: "set_voice", 
+            voice_id: config.voice_id 
+          }) + "\n";
+          novaProcess.stdin.write(voiceConfig);
+          console.log(`💬 Voice configuration sent to Nova: ${config.voice_id}`);
+        } else {
+          console.error("❌ Cannot send voice config - Nova process not writable");
+        }
+      }, 500); // Short delay to ensure process is ready
+    }
 
-    // Start Nova session after process is ready
+    // Start Nova session after process is ready and after voice config is sent
     setTimeout(() => {
       if (novaProcess && novaProcess.stdin.writable) {
         const startSession = JSON.stringify({ type: "start_session" }) + "\n";
         novaProcess.stdin.write(startSession);
+        console.log("🚀 Start session command sent to Nova");
       }
-    }, 1000);
+    }, 1500); // Increased delay to ensure voice config is processed first
 
     novaProcess.stdout.on("data", (data) => {
       console.log("📥 NOVA OUTPUT:", data.toString());
