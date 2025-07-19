@@ -12,10 +12,7 @@ import * as targets from "aws-cdk-lib/aws-route53-targets";
 import { VpcStack } from "./vpc-stack";
 
 export interface EcsSocketStackProps extends StackProps {
-  domainName?: string;
   certificateArn?: string;
-  hostedZoneId?: string;
-  createDnsRecord?: boolean;
 }
 
 export class EcsSocketStack extends Stack {
@@ -88,15 +85,11 @@ export class EcsSocketStack extends Stack {
       maxCapacity: 0,
     });
 
-    // Set up certificate if provided
-    let certificate;
-    if (props?.certificateArn) {
-      certificate = acm.Certificate.fromCertificateArn(
-        this,
-        "Certificate",
-        props.certificateArn
-      );
-    }
+    // Create a self-signed certificate for development
+    const certificate = new acm.Certificate(this, "Certificate", {
+      domainName: "*.elb.amazonaws.com",
+      validation: acm.CertificateValidation.fromEmail(),
+    });
 
     // Fargate service with load balancer
     const fargateService =
@@ -138,29 +131,9 @@ export class EcsSocketStack extends Stack {
     fargateService.targetGroup.setAttribute("stickiness.enabled", "true");
     fargateService.targetGroup.setAttribute("stickiness.type", "lb_cookie");
 
-    // Create DNS record if domain name and hosted zone ID are provided
-    if (props?.domainName && props?.hostedZoneId && props?.createDnsRecord) {
-      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
-        hostedZoneId: props.hostedZoneId,
-        zoneName: props.domainName.split('.').slice(-2).join('.')
-      });
-
-      new route53.ARecord(this, 'SocketDnsRecord', {
-        zone: hostedZone,
-        recordName: props.domainName,
-        target: route53.RecordTarget.fromAlias(
-          new targets.LoadBalancerTarget(fargateService.loadBalancer)
-        ),
-      });
-
-      this.socketUrl = `http://${props.domainName}`;
-      this.secureSocketUrl = `https://${props.domainName}`;
-    } else {
-      this.socketUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
-      this.secureSocketUrl = certificate 
-        ? `https://${fargateService.loadBalancer.loadBalancerDnsName}` 
-        : this.socketUrl;
-    }
+    // Use the load balancer DNS name for the socket URLs
+    this.socketUrl = `http://${fargateService.loadBalancer.loadBalancerDnsName}`;
+    this.secureSocketUrl = `https://${fargateService.loadBalancer.loadBalancerDnsName}`;
 
     // Export the socket URLs
     new cdk.CfnOutput(this, "SocketUrl", {

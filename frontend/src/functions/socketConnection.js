@@ -1,7 +1,17 @@
 import { io } from 'socket.io-client';
 
 // Get the WebSocket URL from environment variables
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || window.SOCKET_URL;
+// For Vite, use import.meta.env instead of process.env
+let SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 
+                window.SOCKET_URL || 
+                'http://localhost:3000';
+
+// Convert HTTP to WebSocket protocol
+if (SOCKET_URL.startsWith('https://')) {
+  SOCKET_URL = SOCKET_URL.replace('https://', 'wss://');
+} else if (SOCKET_URL.startsWith('http://')) {
+  SOCKET_URL = SOCKET_URL.replace('http://', 'ws://');
+}
 
 // Create a socket instance
 let socket;
