@@ -75,7 +75,7 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
       {/* Main Table */}
       <TableContainer component={Paper} elevation={3}>
-        <Table>
+        <Table sx={{ borderCollapse: "collapse" }}>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
               <TableCell colSpan={2}>
@@ -86,10 +86,18 @@ const EmpathyCoachSummary = ({ empathyData }) => {
           <TableBody>
             {/* Category Breakdown */}
             <TableRow>
-              <TableCell component="th" scope="row" sx={{ width: "30%" }}>
+              <TableCell 
+                component="th" 
+                scope="row" 
+                sx={{ 
+                  width: "30%", 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Category Breakdown</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                   <Typography>
                     • Perspective-Taking: {getLevelName(empathyData.avg_perspective_taking)}
@@ -113,10 +121,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Empathy Type Analysis */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Empathy Type Analysis</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                   <Typography>
                     • Cognitive Empathy (Understanding): {getLevelName(empathyData.avg_cognitive_empathy)}
@@ -132,10 +147,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Realism Assessment */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Realism Assessment</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                   <Typography>
                     {empathyData.realism_assessment || "Your responses are generally realistic"}
@@ -150,10 +172,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Coach Assessment */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Coach Assessment</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography sx={{ whiteSpace: "pre-line" }}>
                   {empathyData.coach_assessment || empathyData.summary || "No assessment available."}
                 </Typography>
@@ -162,10 +191,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Strengths */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Strengths</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 {empathyData.strengths ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     {empathyData.strengths.map((strength, index) => (
@@ -180,10 +216,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Areas for Improvement */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Areas for Improvement</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 {empathyData.areas_for_improvement ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     {empathyData.areas_for_improvement.map((area, index) => (
@@ -198,10 +241,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Coach Recommendations */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Coach Recommendations</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 {empathyData.recommendations ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     {empathyData.recommendations.map((rec, index) => (
@@ -216,10 +266,17 @@ const EmpathyCoachSummary = ({ empathyData }) => {
 
             {/* Coach-Recommended Approach */}
             <TableRow>
-              <TableCell component="th" scope="row">
+              <TableCell 
+                component="th" 
+                scope="row"
+                sx={{ 
+                  borderRight: "1px solid rgba(224, 224, 224, 1)",
+                  verticalAlign: "top"
+                }}
+              >
                 <Typography variant="subtitle1">Coach-Recommended Approach</Typography>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography sx={{ fontStyle: "italic" }}>
                   {empathyData.recommended_approach || "No specific approach recommended yet."}
                 </Typography>
