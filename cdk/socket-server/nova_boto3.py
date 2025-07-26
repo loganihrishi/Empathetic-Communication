@@ -371,8 +371,8 @@ async def handle_stdin(nova_client):
             print(f"❌ Failed to process stdin input: {e}", flush=True)
 
 async def main():
-    # Initialize with no voice_id, will be set by frontend
-    nova_client = NovaSonic()
+    voice = os.getenv("VOICE_ID")
+    nova_client = NovaSonic(voice_id=voice)
     
     # First listen for any initial configuration from stdin
     # This allows the frontend to set the voice before starting the session
