@@ -347,10 +347,10 @@ function playBufferedAudio() {
 
       ctx.closePath();
       // fill first
-      ctx.fillStyle = "rgba(0, 180, 255, 0.3)";
+      ctx.fillStyle = "rgba(0, 255, 180, 0.8)";
       ctx.fill();
       // then stroke
-      ctx.strokeStyle = "rgba(0, 180, 255, 0.8)";
+      ctx.strokeStyle = "rgba(0, 255, 180, 0.8)";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
