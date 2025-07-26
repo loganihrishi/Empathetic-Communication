@@ -1217,7 +1217,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       )}
 
       {showVoiceOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(250,250,250,1)] backdrop-blur-md border border-white/20">
           <canvas
             id="audio-visualizer"
             width={window.innerWidth}

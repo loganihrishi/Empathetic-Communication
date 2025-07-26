@@ -47,7 +47,7 @@ export function startSpokenLLM(voice_id = "matthew", setLoading) {
             const pcmData = convertFloat32ToInt16(inputData);
             const base64 = btoa(String.fromCharCode.apply(null, pcmData));
             socket.emit("audio-input", { data: base64 });
-            console.log("🎤 Sending audio data, length:", pcmData.length);
+            // console.log("🎤 Sending audio data, length:", pcmData.length);
           };
 
           input.connect(processor);
@@ -184,7 +184,7 @@ function playBufferedAudio() {
   if (audioBuffer.length === 0 || isPlaying) return;
 
   isPlaying = true;
-  console.log("🔊 Playing buffered audio, chunks:", audioBuffer.length);
+  // ("🔊 Playing buffered audio, chunks:", audioBuffer.length);
 
   try {
     // Combine all audio chunks
@@ -279,11 +279,11 @@ function playBufferedAudio() {
     };
 
     audio.onplay = () => {
-      console.log("🔊 Audio playback started");
+      // console.log("🔊 Audio playback started");
     };
 
     audio.onended = () => {
-      console.log("🔊 Audio playback completed");
+      // console.log("🔊 Audio playback completed");
       URL.revokeObjectURL(audio.src);
       isPlaying = false;
 
@@ -315,40 +315,37 @@ function playBufferedAudio() {
   function startWaveformVisualizer(bufferLength) {
     const canvas = document.getElementById("audio-visualizer");
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
-
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(0, 180, 255, 0.8)";
+    const cx = WIDTH / 2;
+    const cy = HEIGHT / 2;
+    const baseRadius = Math.min(cx, cy) * 0.6; // inner circle
+    const amplitude = Math.min(cx, cy) * 0.4; // how far waveform swings
 
     function draw() {
       animationId = requestAnimationFrame(draw);
       analyser.getByteTimeDomainData(dataArray);
 
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
       ctx.beginPath();
 
-      const sliceWidth = WIDTH / bufferLength;
-      let x = 0;
-
       for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0; // Normalize [0, 255] -> [0.0, 2.0]
-        const y = (v * HEIGHT) / 2;
+        // normalize [0..255] → [0..1]
+        const v = dataArray[i] / 255;
+        // map to radius: base ± swing
+        const r = baseRadius + (v - 0.5) * amplitude * 2;
+        const angle = (i / bufferLength) * Math.PI * 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-
-        x += sliceWidth;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
 
-      ctx.lineTo(WIDTH, HEIGHT / 2);
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(0, 180, 255, 0.8)";
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 

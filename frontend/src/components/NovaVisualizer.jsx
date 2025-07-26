@@ -1,41 +1,64 @@
-import { useEffect, useRef } from "react";
-import Wave from "@foobar404/wave";
+import React, { useEffect, useRef } from "react";
+import p5 from "p5";
 
-const NovaVisualizer = ({ audio }) => {
-  const canvasRef = useRef(null);
-  const waveInstance = useRef(null);
+/**
+ * NovaVisualizer
+ * Props:
+ *   analyser: Web Audio AnalyserNode providing real‑time PCM data
+ */
+export default function NovaVisualizer({
+  analyser,
+  width = 300,
+  height = 300,
+}) {
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!audio || !canvasRef.current) return;
+    if (!analyser) return;
 
-    const wave = new Wave();
-    waveInstance.current = wave;
+    let p5Instance;
 
-    wave.fromElement(audio, canvasRef.current, {
-      type: "bars",
-      colors: ["#3b82f6", "#93c5fd"],
-      stroke: 0,
-      volume: 1,
-      frequency: 0.7,
-    });
+    const sketch = (p) => {
+      let bufferLength;
+      let dataArray;
+
+      p.setup = () => {
+        p.createCanvas(width, height);
+        bufferLength = analyser.fftSize;
+        dataArray = new Uint8Array(bufferLength);
+      };
+
+      p.draw = () => {
+        p.background(0);
+        analyser.getByteTimeDomainData(dataArray);
+
+        p.stroke(255);
+        p.noFill();
+
+        const cx = p.width / 2;
+        const cy = p.height / 2;
+        const baseRadius = Math.min(cx, cy) * 0.7;
+
+        p.beginShape();
+        for (let i = 0; i < bufferLength; i += Math.floor(bufferLength / 360)) {
+          const angle = p.map(i, 0, bufferLength, 0, p.TWO_PI);
+          const v = dataArray[i] / 255.0;
+          const r = baseRadius + v * 50;
+          const x = cx + r * p.cos(angle);
+          const y = cy + r * p.sin(angle);
+          p.vertex(x, y);
+        }
+        p.endShape(p.CLOSE);
+      };
+    };
+
+    // mount the sketch
+    p5Instance = new p5(sketch, containerRef.current);
 
     return () => {
-      wave.stop();
+      p5Instance.remove();
     };
-  }, [audio]);
+  }, [analyser]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={600}
-      height={120}
-      style={{
-        maxWidth: "90%",
-        borderRadius: "10px",
-        marginBottom: "1rem",
-      }}
-    />
-  );
-};
-
-export default NovaVisualizer;
+  return <div ref={containerRef} />;
+}
