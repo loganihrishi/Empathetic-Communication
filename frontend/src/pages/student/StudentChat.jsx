@@ -221,6 +221,40 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       .some((message) => !message.student_sent);
   };
 
+  const fetchVoiceID = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }student/patient_voice_id?patient_id=${encodeURIComponent(
+          patient.patient_id
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: token,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.voice_id;
+      } else {
+        console.warn(
+          "Failed to fetch voice ID, defaulting to tiffany:",
+          response.statusText
+        );
+        return "tiffany";
+      }
+    } catch (error) {
+      console.warn("Error fetching voice ID, defaulting to tiffany:", error);
+      return "tiffany";
+    }
+  };
+
   useEffect(() => {
     // Connect socket if not connected
     if (!socket.connected) socket.connect();
@@ -1072,8 +1106,10 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
                 setLoading(false);
               } else {
                 setShowVoiceOverlay(true);
-                const voice_id = "lennart";
-                startSpokenLLM(voice_id, setLoading);
+                fetchVoiceID().then((voice_id) => {
+                  console.log("Starting spoken LLM with voice ID:", voice_id);
+                  startSpokenLLM(voice_id, setLoading);
+                });
                 setIsRecording(true);
                 setLoading(true);
               }

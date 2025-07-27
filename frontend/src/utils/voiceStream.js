@@ -26,7 +26,6 @@ export function startSpokenLLM(voice_id = "matthew", setLoading) {
     if (novaStarted) return;
     console.log("✅ Nova backend ready!");
     novaStarted = true;
-    socket.emit("start-audio");
 
     // Set a small delay to ensure the start-audio is processed
     setTimeout(() => {
