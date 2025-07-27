@@ -1107,7 +1107,6 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
               } else {
                 setShowVoiceOverlay(true);
                 fetchVoiceID().then((voice_id) => {
-                  console.log("Starting spoken LLM with voice ID:", voice_id);
                   startSpokenLLM(voice_id, setLoading);
                 });
                 setIsRecording(true);
