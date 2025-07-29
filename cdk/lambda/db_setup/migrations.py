@@ -135,6 +135,25 @@ def get_update_feedback_table_sql():
         END IF;
     END $$;
     """
+    
+def get_empathy_eval_column_sql():
+    """SQL for adding empathy_eval column to messages table"""
+    return """
+    DO $$
+    BEGIN
+        -- Check if the column doesn't exist
+        IF NOT EXISTS (
+            SELECT 1
+              FROM information_schema.columns
+             WHERE table_name = 'messages'
+               AND column_name = 'empathy_evaluation'
+        ) THEN
+            ALTER TABLE messages
+                ADD COLUMN empathy_evaluation JSONB DEFAULT '{}'::JSONB;
+        END IF;
+    END
+    $$;
+    """
 
 def get_patient_voice_column_sql():
     """SQL for adding patient_voice column to patients table with default 'tiffany'."""
@@ -285,6 +304,8 @@ def get_initial_schema():
             "engagement_type" varchar,
             "engagement_details" text
         );
+
+
 
         -- Add foreign key constraints
         ALTER TABLE "user_engagement_log" ADD FOREIGN KEY ("enrolment_id") REFERENCES "enrolments" ("enrolment_id") ON DELETE CASCADE ON UPDATE CASCADE;
