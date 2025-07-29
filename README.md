@@ -21,6 +21,28 @@ The following architecture diagram illustrates the various AWS components utiliz
 
 ![Alt text](docs/images/architecture.png)
 
+## Package Management
+
+This project uses [Poetry](https://python-poetry.org/) for Python dependency management to ensure consistent, reproducible builds across all environments. See [PACKAGE_MANAGEMENT.md](./PACKAGE_MANAGEMENT.md) for complete setup instructions.
+
+### Quick Setup
+```bash
+# Install Poetry
+curl -sSL https://install.python-poetry.org | py  # Windows
+curl -sSL https://install.python-poetry.org | python3 -  # macOS/Linux
+
+# Install export plugin
+poetry self add poetry-plugin-export
+
+# Install CDK dependencies
+cd cdk
+npm install
+
+# Deploy it now (Poetry handles Python dependencies automatically)
+```
+
+**Note:** Poetry dependencies are installed automatically during Docker builds - no manual `poetry install` required for deployment.
+
 ## Deployment Guide
 
 To deploy this solution, please follow the steps laid out in the [Deployment Guide](./docs/deploymentGuide.md)
