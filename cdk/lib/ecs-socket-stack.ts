@@ -9,6 +9,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import { VpcStack } from "./vpc-stack";
+import { DatabaseStack } from "./database-stack";
 
 export class EcsSocketStack extends Stack {
   public readonly socketUrl: string;
@@ -17,6 +18,7 @@ export class EcsSocketStack extends Stack {
     scope: Construct,
     id: string,
     vpcStack: VpcStack,
+    db: DatabaseStack,
     props?: StackProps
   ) {
     super(scope, id, props);
@@ -92,6 +94,8 @@ export class EcsSocketStack extends Stack {
       }),
       environment: {
         NODE_ENV: "production",
+        SM_DB_CREDENTIALS: db.secretPathUser.secretName,
+        RDS_PROXY_ENDPOINT: db.rdsProxyEndpoint,
       },
     });
 

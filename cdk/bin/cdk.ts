@@ -24,6 +24,7 @@ const ecsSocketStack = new EcsSocketStack(
   app,
   `${StackPrefix}-EcsSocket`,
   vpcStack,
+  dbStack,
   { env }
 );
 const apiStack = new ApiGatewayStack(

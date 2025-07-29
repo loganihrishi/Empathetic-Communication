@@ -11,6 +11,12 @@ from aws_sdk_bedrock_runtime.models import InvokeModelWithBidirectionalStreamInp
 from aws_sdk_bedrock_runtime.config import Config, HTTPAuthSchemeResolver, SigV4AuthScheme
 from smithy_aws_core.credentials_resolvers.environment import EnvironmentCredentialsResolver
 import langchain_chat_history
+import psycopg2
+import uuid
+from datetime import datetime
+
+# Define a global connection (or manage it however you do for RDS)
+pg_conn = None
 
 # Audio config
 INPUT_SAMPLE_RATE = 16000
@@ -27,6 +33,20 @@ os.environ['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
 os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 if creds.token:
     os.environ['AWS_SESSION_TOKEN'] = creds.token
+
+
+
+def get_pg_connection():
+    global pg_conn
+    if pg_conn is None or pg_conn.closed:
+        pg_conn = psycopg2.connect(
+            dbname=os.getenv("PG_DBNAME"),
+            user=os.getenv("PG_USER"),
+            password=os.getenv("PG_PASSWORD"),
+            host=os.getenv("PG_HOST"),
+            port=os.getenv("PG_PORT")
+        )
+    return pg_conn
 
 
 class NovaSonic:
@@ -313,6 +333,26 @@ class NovaSonic:
                 print(f"User: {text}", flush=True)
                 print(json.dumps({"type": "text", "text": text}), flush=True)
                 langchain_chat_history.add_message(self.session_id, "user", text)
+        
+            # Mirror to PostgreSQL
+            try:
+                conn = get_pg_connection()
+                cursor = conn.cursor()
+                insert_query = """
+                    INSERT INTO messages (message_id, session_id, student_sent, message_content, time_sent)
+                    VALUES (%s, %s, %s, %s, %s);
+                """
+                cursor.execute(insert_query, (
+                    str(uuid.uuid4()),
+                    self.session_id,
+                    True if self.role == "USER" else False,
+                    text,
+                    datetime.utcnow()
+                ))
+                conn.commit()
+                cursor.close()
+            except Exception as e:
+                print(f"❌ Failed to insert message into PostgreSQL: {e}", flush=True)
 
         # audioOutput
         elif "audioOutput" in evt:
