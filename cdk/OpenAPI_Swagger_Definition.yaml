@@ -1683,6 +1683,7 @@ paths:
         passthroughBehavior: "when_no_match"
         httpMethod: "POST"
         type: "aws_proxy"
+  # Endpoint to retrieve empathy evaluation summary and scores for a student's session
   /student/empathy_summary:
     options:
       summary: CORS support
@@ -2443,6 +2444,7 @@ paths:
         passthroughBehavior: "when_no_match"
         httpMethod: "POST"
         type: "aws_proxy"
+  # Endpoint to retrieve instructor view empathy evaluation summary and scores for a student's session
   /instructor/empathy_summary:
     options:
       summary: CORS support
