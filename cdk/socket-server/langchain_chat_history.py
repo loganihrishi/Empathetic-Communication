@@ -20,6 +20,8 @@ secrets_manager_client = boto3.client("secretsmanager")
 
 RDS_PROXY_ENDPOINT = os.environ.get("RDS_PROXY_ENDPOINT")  # Replace with your actual RDS proxy endpoint
 DB_SECRET_NAME = os.environ.get("SM_DB_CREDENTIALS")  # Replace with your actual secret name
+print(f"Using RDS Proxy Endpoint: {RDS_PROXY_ENDPOINT}")
+print(f"Using DB Secret Name: {DB_SECRET_NAME}")
 
 def format_chat_history(session_id: str, table_name: str = "DynamoDB-Conversation-Table") -> str:
     history = DynamoDBChatMessageHistory(table_name=table_name, session_id=session_id)

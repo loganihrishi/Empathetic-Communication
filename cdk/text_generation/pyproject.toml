@@ -17,6 +17,7 @@ pgvector = "*"
 psycopg = {extras = ["binary", "pool"], version = "*"}
 psycopg2-binary = "*"
 PyMuPDF = "1.24.10"
+langchain-community = "*" 
 
 [build-system]
 requires = ["poetry-core"]

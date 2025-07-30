@@ -831,6 +831,9 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             Authorization: authToken,
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            message_content: 'say "hi"',
+          }),
         });
       })
       .then((textResponse) => {
@@ -1324,7 +1327,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           />
         </div>
 
-        <div className="flex-grow overflow-y-auto p-4 h-full">
+        <div className="flex-grow overflow-y-auto p-4 h-full flex flex-col">
           {messages.map((message, index) =>
             message.student_sent ? (
               <StudentMessage
@@ -1348,15 +1351,14 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
               />
             )
           )}
+
+          {/* TypingIndicator inside the message area */}
+          {isAItyping && (
+            <TypingIndicator patientName={patient?.patient_name} />
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
-
-        {/* TypingIndicator: Pass patient's name */}
-        {isAItyping && <TypingIndicator patientName={patient?.patient_name} />}
-
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="font-roboto font-bold text-2xl text-center mt-6 mb-6 text-black">
-        AI Patient
       </div>
 
       {/* Draggable Notes */}

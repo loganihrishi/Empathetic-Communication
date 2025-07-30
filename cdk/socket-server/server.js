@@ -53,10 +53,13 @@ io.on("connection", (socket) => {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
+
         SOCKET_URL: `http://127.0.0.1:${PORT}`,
         SESSION_ID: config.session_id || "default",
         VOICE_ID: config.voice_id || "",
         SSL_VERIFY: "false",
+        SM_DB_CREDENTIALS: process.env.SM_DB_CREDENTIALS || "",
+        RDS_PROXY_ENDPOINT: process.env.RDS_PROXY_ENDPOINT || "",
       },
     });
     console.log("📡 Nova process spawned with PID:", novaProcess.pid);
