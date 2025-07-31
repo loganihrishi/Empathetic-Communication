@@ -234,7 +234,11 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         if (response.ok) {
           const data = await response.json();
           setSessions(data);
-          setSession(data[data.length - 1]);
+          const latestSession = data[data.length - 1];
+          setSession(latestSession);
+          if (latestSession) {
+            setCurrentSessionId(latestSession.session_id);
+          }
         } else {
           console.error("Failed to fetch patient:", response.statusText);
         }
@@ -1057,6 +1061,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   };
   useEffect(() => {
     if (session) {
+      setCurrentSessionId(session.session_id);
       getMessages();
     }
   }, [session]);
