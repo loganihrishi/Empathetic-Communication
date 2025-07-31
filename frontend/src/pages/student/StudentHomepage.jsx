@@ -38,8 +38,8 @@ const { augmentColor } = palette;
 const createColor = (mainColor) => augmentColor({ color: { main: mainColor } });
 const theme = createTheme({
   palette: {
-    primary: createColor("#4de698"),
-    bg: createColor("#F8F9FD"),
+    primary: createColor("#10b981"),
+    bg: createColor("#f8fafc"),
   },
 });
 
@@ -202,19 +202,21 @@ export const StudentHomepage = ({ setGroup }) => {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <StudentHeader />
-      <Container
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          alignItems: "stretch",
-          width: "100%",
-          maxWidth: "100%",
-          pb: 0,
-        }}
-      >
+    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+      <ThemeProvider theme={theme}>
+        <StudentHeader />
+        <Container
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            alignItems: "stretch",
+            width: "100%",
+            maxWidth: "100%",
+            pb: 0,
+            pt: 3,
+          }}
+        >
         <Stack
           sx={{
             flex: 1,
@@ -227,36 +229,44 @@ export const StudentHomepage = ({ setGroup }) => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              width: "100%", // Full width for consistent alignment
+              width: "100%",
               paddingLeft: 4,
               paddingRight: 5,
-              mb: 2,
+              mb: 4,
+              pb: 3,
+              borderBottom: "1px solid #e5e7eb",
             }}
           >
             <Typography
               component="h1"
-              variant="h5"
-              color="black"
+              variant="h4"
               sx={{
-                fontWeight: "500",
-                display: "flex",
-                alignItems: "center",
-                fontSize: "1.5rem",
+                fontWeight: "700",
+                color: "#1f2937",
+                fontSize: "2rem",
               }}
-              textAlign="left"
             >
               Groups
             </Typography>
             <Button
-              variant="outlined"
+              variant="contained"
               sx={{
-                borderColor: "black",
-                color: "black",
-                borderWidth: "1px",
-                alignSelf: "flex-end",
+                borderRadius: "12px",
+                backgroundColor: "#10b981",
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                textTransform: "none",
+                px: 4,
+                py: 1.5,
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                transition: "all 0.2s ease-in-out",
                 "&:hover": {
-                  bgcolor: "white",
-                  borderColor: "black",
+                  backgroundColor: "#059669",
+                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                  transform: "translateY(-1px)",
+                },
+                "&:active": {
+                  transform: "translateY(0)",
                 },
               }}
               onClick={handleClickOpen}
@@ -275,10 +285,10 @@ export const StudentHomepage = ({ setGroup }) => {
               }}
             >     
               <l-cardio
-                size="50" // pulse for loading animation  
+                size="50"
                 stroke="4"
                 speed="2" 
-                color="Black" 
+                color="#10b981" 
               ></l-cardio>
             </Box>
           ) : (
@@ -297,52 +307,95 @@ export const StudentHomepage = ({ setGroup }) => {
               }}
             >
               {groups.length === 0 ? (
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: "black",
-                    textAlign: "center",
-                    mt: 2,
-                    fontSize: "1.5rem",
-                  }}
-                >
-                  No groups added yet, click "JOIN GROUP" to add a group
-                </Typography>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: "#374151",
+                      fontWeight: "600",
+                      mb: 2,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    No groups yet
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: "#6b7280",
+                      mb: 4,
+                      maxWidth: "400px",
+                      mx: "auto",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    You haven't joined any simulation groups yet. Click "Join Group" above to get started with your medical training simulations.
+                  </Typography>
+                </div>
               ) : (
                 <Grid container spacing={2} sx={{ width: "100%" }}>
                   {groups.map((group, index) => (
                     <Grid item xs={4} key={index}>
                       <Card
                         sx={{
-                          mb: 1,
-                          bgcolor: "transparent",
-                          background: "#99DFB2",
-                          transition: "transform 0.3s ease",
+                          mb: 2,
+                          borderRadius: "16px",
+                          border: "1px solid #e5e7eb",
+                          backgroundColor: "white",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                          transition: "all 0.3s ease",
                           "&:hover": {
-                            transform: "scale(1.05)",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                            borderColor: "#10b981",
                           },
                         }}
                       >
-                        <CardContent>
+                        <CardContent sx={{ p: 3 }}>
                           <Typography
                             variant="h6"
                             sx={{
                               textAlign: "left",
-                              fontWeight: "600",
+                              fontWeight: "700",
                               fontSize: "1.25rem",
+                              color: "#1f2937",
+                              mb: 1,
                             }}
                           >
                             {titleCase(group.group_name)}
                           </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#6b7280",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            Simulation Group
+                          </Typography>
                         </CardContent>
-                        <CardActions sx={{ justifyContent: "flex-end" }}>
+                        <CardActions sx={{ justifyContent: "flex-end", p: 3, pt: 0 }}>
                           <Button
                             size="small"
                             sx={{
-                              bgcolor: "#e3f7f1",
-                              color: "black",
-                              fontWeight: "dark",
-                              ":hover": { bgcolor: "grey" },
+                              borderRadius: "8px",
+                              backgroundColor: "#10b981",
+                              color: "white",
+                              fontWeight: "600",
+                              textTransform: "none",
+                              px: 3,
+                              py: 1,
+                              fontSize: "0.875rem",
+                              transition: "all 0.2s ease-in-out",
+                              "&:hover": {
+                                backgroundColor: "#059669",
+                                transform: "translateY(-1px)",
+                              },
                             }}
                             onClick={() => enterGroup(group)}
                           >
@@ -405,7 +458,8 @@ export const StudentHomepage = ({ setGroup }) => {
         pauseOnHover
         theme="colored"
       />
-    </ThemeProvider>
+      </ThemeProvider>
+    </div>
   );
 };
 

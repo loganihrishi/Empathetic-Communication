@@ -229,53 +229,100 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
   }
 
   return (
-    <div className="bg-[#F8F9FD] w-screen h-screen">
-
-      {/* Sign-Out Button in the top right */}
-      <header className="bg-[#F8F9FD] p-4 flex justify-between items-center max-h-20">
-        <div className="text-black text-xl font-roboto font-semibold p-2 flex flex-row">
-          <img
+    <div className="bg-gray-50 min-h-screen">
+      {/* Modern Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center space-x-4">
+          <button
             onClick={() => handleBack()}
-            className="mt-1 mr-2 w-6 h-6 cursor-pointer"
-            src="./ArrowCircleDownRounded.png"
-            alt="back"
-          />
-        </div>
-        <div className="text-black text-start text-xl font-roboto font-semibold p-2 ml-4">
-          Patients
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+          >
+            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
         </div>
         <button
-          type="button"
-          className="bg-gray-800 text-white hover:bg-gray-700"
           onClick={handleSignOut}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200"
         >
           Sign Out
         </button>
       </header>
 
-      <div className="flex flex-col">
-        <div className="flex justify-center items-center">
+      <div className="p-6">
+        <div className="flex justify-center">
           {data.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              No patients to display
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No patients available</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                There are currently no patients assigned to this simulation group.
+              </p>
             </div>
           ) : (
-            <TableContainer
-              component={Paper}
-              sx={{
-                width: "80%",
-                maxHeight: "60vh",
-                overflowY: "auto",
-                marginX: 2,
-              }}
-            >
+            <div className="w-full max-w-6xl">
+              <TableContainer
+                component={Paper}
+                sx={{
+                  borderRadius: "16px",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                }}
+              >
               <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: "1.1rem" }}>Patient</TableCell>
-                    <TableCell sx={{ fontSize: "1.1rem" }}>LLM Evaluation</TableCell>
-                    <TableCell sx={{ fontSize: "1.1rem" }}>Instructor Evaluation</TableCell>
-                    <TableCell sx={{ fontSize: "1.1rem" }}>Review</TableCell>
+                  <TableRow sx={{ backgroundColor: "#f9fafb" }}>
+                    <TableCell 
+                      sx={{ 
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                        py: 3,
+                      }}
+                    >
+                      Patient
+                    </TableCell>
+                    <TableCell 
+                      sx={{ 
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                        py: 3,
+                      }}
+                    >
+                      LLM Evaluation
+                    </TableCell>
+                    <TableCell 
+                      sx={{ 
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                        py: 3,
+                      }}
+                    >
+                      Instructor Evaluation
+                    </TableCell>
+                    <TableCell 
+                      sx={{ 
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                        py: 3,
+                      }}
+                    >
+                      Review
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -340,9 +387,17 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
                       <TableCell sx={{ fontSize: "1rem" }}>
                         <Button
                           variant="contained"
-                          color="primary"
                           onClick={() => enterPatient(entry)}
-                          sx={{ textTransform: "none", fontSize: "0.9rem" }}
+                          sx={{ 
+                            textTransform: "none", 
+                            fontSize: "0.875rem",
+                            backgroundColor: "#10b981",
+                            borderRadius: "8px",
+                            fontWeight: "600",
+                            "&:hover": {
+                              backgroundColor: "#059669",
+                            },
+                          }}
                         >
                           Review
                         </Button>
@@ -352,6 +407,7 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
                 </TableBody>
               </Table>
             </TableContainer>
+            </div>
           )}
         </div>
       </div>
