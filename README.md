@@ -46,6 +46,12 @@ npm install
 
 To deploy this solution, please follow the steps laid out in the [Deployment Guide](./docs/deploymentGuide.md)
 
+## Optional Bedrock Guardrails
+
+This system includes optional support for AWS Bedrock Guardrails as an additional layer of content protection. By default, the system uses system prompt protection, but you can optionally enable Bedrock Guardrails for enhanced content filtering.
+
+For complete setup instructions, see [Bedrock Guardrails Configuration](./BEDROCK_GUARDRAILS.md)
+
 ## User Guide
 
 Please refer to the [Web App User Guide](./docs/userGuide.md) for instructions on navigating the web app interface.
