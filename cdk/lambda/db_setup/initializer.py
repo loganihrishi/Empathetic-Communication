@@ -50,7 +50,7 @@ def handler(event, context):
         logger.info("Starting database initialization and migrations")
         
         # Run all pending migrations
-        run_migrations(connection)
+        run_migrations(dbSecret)
         
         #
         ## Create users with limited permissions on RDS

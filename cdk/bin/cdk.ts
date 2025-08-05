@@ -20,19 +20,20 @@ const vpcStack = new VpcStack(app, `${StackPrefix}-VpcStack`, { env });
 const dbStack = new DatabaseStack(app, `${StackPrefix}-Database`, vpcStack, {
   env,
 });
-const ecsSocketStack = new EcsSocketStack(
-  app,
-  `${StackPrefix}-EcsSocket`,
-  vpcStack,
-  dbStack,
-  { env }
-);
 const apiStack = new ApiGatewayStack(
   app,
   `${StackPrefix}-Api`,
   dbStack,
   vpcStack,
-  ecsSocketStack,
+  null, // ecsSocketStack will be passed later
+  { env }
+);
+const ecsSocketStack = new EcsSocketStack(
+  app,
+  `${StackPrefix}-EcsSocket`,
+  vpcStack,
+  dbStack,
+  apiStack,
   { env }
 );
 const dbFlowStack = new DBFlowStack(

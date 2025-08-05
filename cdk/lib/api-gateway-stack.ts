@@ -51,7 +51,7 @@ export class ApiGatewayStack extends cdk.Stack {
     id: string,
     db: DatabaseStack,
     vpcStack: VpcStack,
-    ecsSocketStack: any,
+    ecsSocketStack: any = null,
     props?: cdk.StackProps
   ) {
     super(scope, id, props);
@@ -271,6 +271,35 @@ export class ApiGatewayStack extends cdk.Stack {
             [
               `arn:aws:execute-api:${this.region}:${this.account}:${this.api.restApiId}/*/*/student/*`,
             ]
+          ),
+          // Add DynamoDB permissions for Nova Sonic
+          createPolicyStatement(
+            [
+              "dynamodb:GetItem",
+              "dynamodb:Query",
+              "dynamodb:Scan",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+            ],
+            [
+              `arn:aws:dynamodb:${this.region}:${this.account}:table/DynamoDB-Conversation-Table`,
+            ]
+          ),
+          // Add Bedrock permissions for Nova Sonic
+          createPolicyStatement(
+            [
+              "bedrock:InvokeModel",
+              "bedrock:InvokeModelWithBidirectionalStream",
+              "bedrock:Converse",
+              "bedrock:ConverseStream",
+              "bedrock:InvokeModelWithResponseStream",
+            ],
+            ["*"]
+          ),
+          // Add Secrets Manager permissions for Nova Sonic
+          createPolicyStatement(
+            ["secretsmanager:GetSecretValue"],
+            [db.secretPathUser.secretArn]
           ),
         ],
       })

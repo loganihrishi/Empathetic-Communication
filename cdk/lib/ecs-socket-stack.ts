@@ -19,6 +19,7 @@ export class EcsSocketStack extends Stack {
     id: string,
     vpcStack: VpcStack,
     db: DatabaseStack,
+    apiGatewayStack: any,
     props?: StackProps
   ) {
     super(scope, id, props);
@@ -60,6 +61,7 @@ export class EcsSocketStack extends Stack {
       },
     });
 
+    // DynamoDB permissions for ECS task role
     taskRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -73,6 +75,18 @@ export class EcsSocketStack extends Stack {
         resources: [
           `arn:aws:dynamodb:${this.region}:${this.account}:table/DynamoDB-Conversation-Table`,
         ],
+      })
+    );
+
+    // Add permissions for Cognito Identity operations
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "cognito-identity:GetId",
+          "cognito-identity:GetCredentialsForIdentity",
+        ],
+        resources: ["*"],
       })
     );
 
@@ -104,6 +118,10 @@ export class EcsSocketStack extends Stack {
         NODE_ENV: "production",
         SM_DB_CREDENTIALS: db.secretPathUser.secretName,
         RDS_PROXY_ENDPOINT: db.rdsProxyEndpoint,
+        AWS_REGION: this.region,
+        COGNITO_USER_POOL_ID: apiGatewayStack.getUserPoolId(),
+        COGNITO_CLIENT_ID: apiGatewayStack.getUserPoolClientId(),
+        IDENTITY_POOL_ID: apiGatewayStack.getIdentityPoolId(),
       },
     });
 

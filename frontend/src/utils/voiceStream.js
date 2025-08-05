@@ -1,6 +1,6 @@
 // PCM-compatible real-time microphone audio stream using AudioContext for Nova Sonic
 
-import { socket } from "./socket";
+import { getSocket } from "./socket";
 
 let audioContext;
 let processor;
@@ -12,12 +12,14 @@ let dataArray;
 let animationId;
 let novaStartListenerAttached = false;
 
-export function startSpokenLLM(voice_id = "matthew", setLoading, session_id) {
+export async function startSpokenLLM(voice_id = "matthew", setLoading, session_id) {
   if (novaStarted) {
     console.warn("🔁 Nova Sonic is already started.");
     return;
   }
 
+  const socket = await getSocket();
+  
   // Clean up any existing listeners to prevent duplicates
   socket.off("nova-started");
 
@@ -46,7 +48,6 @@ export function startSpokenLLM(voice_id = "matthew", setLoading, session_id) {
             const pcmData = convertFloat32ToInt16(inputData);
             const base64 = btoa(String.fromCharCode.apply(null, pcmData));
             socket.emit("audio-input", { data: base64 });
-            // console.log("🎤 Sending audio data, length:", pcmData.length);
           };
 
           input.connect(processor);
@@ -61,7 +62,6 @@ export function startSpokenLLM(voice_id = "matthew", setLoading, session_id) {
     }, 500);
   });
 
-  // Make sure socket is connected
   if (!socket.connected) {
     socket.connect();
   }
@@ -73,10 +73,10 @@ export function startSpokenLLM(voice_id = "matthew", setLoading, session_id) {
   });
 }
 
-export function stopSpokenLLM() {
+export async function stopSpokenLLM() {
   console.log("🛑 Stopping Nova Sonic voice stream...");
 
-  // First send the end-audio signal
+  const socket = await getSocket();
   socket.emit("end-audio");
 
   // Then clean up audio resources
@@ -122,8 +122,8 @@ export function stopSpokenLLM() {
     audioContext = null;
   }
 
-  // Remove any lingering event listeners
-  socket.off("nova-started");
+  const socketRef = await getSocket();
+  socketRef.off("nova-started");
 
   novaStarted = false;
   console.log("🛑 Stopped PCM voice stream");
@@ -151,28 +151,20 @@ export function playAudio(audioBytes) {
       return;
     }
 
-    // Add the new chunk to our buffer
     audioBuffer.push(audioBytes);
-    console.log(
-      "🔊 Added audio chunk to buffer, current chunks:",
-      audioBuffer.length
-    );
+    console.log("🔊 Added audio chunk to buffer, current chunks:", audioBuffer.length);
 
-    // Clear any existing timeout
     if (bufferTimeout) {
       clearTimeout(bufferTimeout);
     }
 
-    // Wait for more chunks to arrive before playing
-    // This is the key to smooth playback - collect more data before starting
-    const bufferThreshold = 5; // Collect more chunks for smoother playback
-    const initialDelay = 300; // Longer initial delay for better buffering
+    const bufferThreshold = 5;
+    const initialDelay = 300;
 
     if (!isPlaying) {
       bufferTimeout = setTimeout(playBufferedAudio, initialDelay);
     }
 
-    // If we have enough chunks already, play immediately
     if (audioBuffer.length >= bufferThreshold && !isPlaying) {
       clearTimeout(bufferTimeout);
       playBufferedAudio();
@@ -186,10 +178,8 @@ function playBufferedAudio() {
   if (audioBuffer.length === 0 || isPlaying) return;
 
   isPlaying = true;
-  // ("🔊 Playing buffered audio, chunks:", audioBuffer.length);
 
   try {
-    // Combine all audio chunks
     let totalLength = 0;
     const byteArrays = audioBuffer.map((chunk) => {
       const byteChars = atob(chunk);
@@ -201,7 +191,6 @@ function playBufferedAudio() {
       return bytes;
     });
 
-    // Create a single combined array
     const combinedArray = new Uint8Array(totalLength);
     let offset = 0;
     byteArrays.forEach((array) => {
@@ -209,91 +198,66 @@ function playBufferedAudio() {
       offset += array.length;
     });
 
-    // Create WAV header for 24kHz 16-bit mono audio
     const wavHeader = new ArrayBuffer(44);
     const view = new DataView(wavHeader);
 
-    // "RIFF" chunk descriptor
     view.setUint8(0, "R".charCodeAt(0));
     view.setUint8(1, "I".charCodeAt(0));
     view.setUint8(2, "F".charCodeAt(0));
     view.setUint8(3, "F".charCodeAt(0));
-
-    view.setUint32(4, 36 + combinedArray.length, true); // File size - 8
-
-    // "WAVE" format
+    view.setUint32(4, 36 + combinedArray.length, true);
     view.setUint8(8, "W".charCodeAt(0));
     view.setUint8(9, "A".charCodeAt(0));
     view.setUint8(10, "V".charCodeAt(0));
     view.setUint8(11, "E".charCodeAt(0));
-
-    // "fmt " subchunk
     view.setUint8(12, "f".charCodeAt(0));
     view.setUint8(13, "m".charCodeAt(0));
     view.setUint8(14, "t".charCodeAt(0));
     view.setUint8(15, " ".charCodeAt(0));
-
-    view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
-    view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
-    view.setUint16(22, 1, true); // NumChannels (1 for mono)
-    view.setUint32(24, 24000, true); // SampleRate (24kHz)
-    view.setUint32(28, 24000 * 2, true); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-    view.setUint16(32, 2, true); // BlockAlign (NumChannels * BitsPerSample/8)
-    view.setUint16(34, 16, true); // BitsPerSample (16 bits)
-
-    // "data" subchunk
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 24000, true);
+    view.setUint32(28, 24000 * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
     view.setUint8(36, "d".charCodeAt(0));
     view.setUint8(37, "a".charCodeAt(0));
     view.setUint8(38, "t".charCodeAt(0));
     view.setUint8(39, "a".charCodeAt(0));
+    view.setUint32(40, combinedArray.length, true);
 
-    view.setUint32(40, combinedArray.length, true); // Subchunk2Size
-
-    // Combine header and audio data
     const wavBlob = new Blob([wavHeader, combinedArray], { type: "audio/wav" });
-
-    // Create audio element and play
     const audio = new Audio();
     audio.src = URL.createObjectURL(wavBlob);
-    audio.volume = 1.0; // Ensure volume is at maximum
+    audio.volume = 1.0;
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
 
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048; // High resolution for smooth waveform
+    analyser.fftSize = 2048;
     const bufferLength = analyser.fftSize;
     dataArray = new Uint8Array(bufferLength);
 
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
 
-    // Start smooth line waveform
     startWaveformVisualizer(bufferLength);
 
-    // Store the current buffer for potential reuse
-    const currentBuffer = [...audioBuffer];
-    // Clear the buffer for new incoming chunks
     audioBuffer = [];
 
     audio.onloadedmetadata = () => {
       console.log("🔊 Audio metadata loaded, duration:", audio.duration);
     };
 
-    audio.onplay = () => {
-      // console.log("🔊 Audio playback started");
-    };
-
     audio.onended = () => {
-      // console.log("🔊 Audio playback completed");
       URL.revokeObjectURL(audio.src);
       isPlaying = false;
 
-      // Check if new chunks arrived during playback
       if (audioBuffer.length >= 3) {
         setTimeout(playBufferedAudio, 50);
       } else if (audioBuffer.length > 0) {
-        // Wait a bit longer for more chunks if we don't have enough
         setTimeout(playBufferedAudio, 200);
       }
     };
@@ -303,7 +267,6 @@ function playBufferedAudio() {
       isPlaying = false;
     };
 
-    // Play the audio
     audio.play().catch((err) => {
       console.error("🔊 Failed to play audio:", err);
       isPlaying = false;
@@ -311,7 +274,7 @@ function playBufferedAudio() {
   } catch (error) {
     console.error("🔊 Audio buffer processing failed:", error);
     isPlaying = false;
-    audioBuffer = []; // Clear the buffer on error
+    audioBuffer = [];
   }
 
   function startWaveformVisualizer(bufferLength) {
@@ -322,9 +285,9 @@ function playBufferedAudio() {
     const HEIGHT = canvas.height;
     const cx = WIDTH / 2;
     const cy = HEIGHT / 2;
-    const baseRadius = Math.min(cx, cy) * 0.6; // inner circle
-    const amplitude = Math.min(cx, cy) * 1.5; // how far waveform swings
-    const smoothing = 0.1; // lower = smoother
+    const baseRadius = Math.min(cx, cy) * 0.6;
+    const amplitude = Math.min(cx, cy) * 1.5;
+    const smoothing = 0.1;
     const smoothed = new Float32Array(bufferLength).fill(baseRadius);
 
     function draw() {
@@ -334,10 +297,10 @@ function playBufferedAudio() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
       ctx.beginPath();
 
-      const step = 8; // Use every 4th point for chunkier blobs
-      const avgRange = 4; // Range for smoothing nearby samples
-      const amplitude = 140; // Bump size
-      const smoothing = 0.1; // Smoothness factor
+      const step = 8;
+      const avgRange = 4;
+      const amplitude = 140;
+      const smoothing = 0.1;
 
       const getAveragedValue = (i, range = avgRange) => {
         let sum = 0;
@@ -352,9 +315,9 @@ function playBufferedAudio() {
       };
 
       for (let i = 0; i < bufferLength; i += step) {
-        const v = getAveragedValue(i) / 255; // Normalize [0,1]
-        const targetR = baseRadius + (v - 0.5) * amplitude * 2; // Radius change
-        smoothed[i] += (targetR - smoothed[i]) * smoothing; // Smooth transition
+        const v = getAveragedValue(i) / 255;
+        const targetR = baseRadius + (v - 0.5) * amplitude * 2;
+        smoothed[i] += (targetR - smoothed[i]) * smoothing;
 
         const angle = (i / bufferLength) * Math.PI * 2;
         const x = cx + smoothed[i] * Math.cos(angle);

@@ -9,7 +9,7 @@ import { fetchUserAttributes } from "aws-amplify/auth";
 import DraggableNotes from "./DraggableNotes";
 import FilesPopout from "./FilesPopout";
 import EmpathyCoachSummary from "../../components/EmpathyCoachSummary";
-import { socket } from "../../utils/socket";
+import { getSocket } from "../../utils/socket";
 import NovaVisualizer from "../../components/NovaVisualizer";
 import {
   startSpokenLLM,
@@ -126,20 +126,15 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
 
   // Handle nova-started event once
   useEffect(() => {
-    // Remove any existing listeners first
-    socket.off("nova-started");
-
-    // Add the listener
-    socket.on("nova-started", () => {
-      console.log("✅ Nova backend ready in StudentChat!");
-      setNovaStarted(true);
-      // Don't emit start-audio here, it's handled in voiceStream.js
-    });
-
-    // Cleanup
-    return () => {
+    const setupSocket = async () => {
+      const socket = await getSocket();
       socket.off("nova-started");
+      socket.on("nova-started", () => {
+        console.log("✅ Nova backend ready in StudentChat!");
+        setNovaStarted(true);
+      });
     };
+    setupSocket();
   }, []);
 
   useEffect(() => {
@@ -304,56 +299,47 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   };
 
   useEffect(() => {
-    // Connect socket if not connected
-    if (!socket.connected) socket.connect();
+    const setupSocketListeners = async () => {
+      const socket = await getSocket();
+      if (!socket.connected) socket.connect();
 
-    // Define event handlers
-    const handleConnect = () => {
-      console.log("✅ WebSocket connected:", socket.id);
+      const handleConnect = () => {
+        console.log("✅ WebSocket connected:", socket.id);
+      };
+
+      const handleDisconnect = () => {
+        console.log("❌ WebSocket disconnected");
+      };
+
+      const handleError = (error) => {
+        console.error("🔥 WebSocket connection error:", error);
+      };
+
+      const handleText = (data) => {
+        console.log("💬 Nova Sonic:", data.text);
+      };
+
+      const handleAudio = (data) => {
+        console.log("🎵 Received audio chunk, length:", data.data?.length || 0);
+        if (data.data) {
+          console.log("🔊 Playing audio from StudentChat");
+          playAudio(data.data);
+        }
+      };
+
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("text-message");
+      socket.off("audio-chunk");
+
+      socket.on("connect", handleConnect);
+      socket.on("disconnect", handleDisconnect);
+      socket.on("connect_error", handleError);
+      socket.on("text-message", handleText);
+      socket.on("audio-chunk", handleAudio);
     };
-
-    const handleDisconnect = () => {
-      console.log("❌ WebSocket disconnected");
-    };
-
-    const handleError = (error) => {
-      console.error("🔥 WebSocket connection error:", error);
-    };
-
-    const handleText = (data) => {
-      console.log("💬 Nova Sonic:", data.text);
-    };
-
-    const handleAudio = (data) => {
-      console.log("🎵 Received audio chunk, length:", data.data?.length || 0);
-      if (data.data) {
-        console.log("🔊 Playing audio from StudentChat");
-        playAudio(data.data);
-      }
-    };
-
-    // Remove any existing listeners before adding new ones
-    socket.off("connect");
-    socket.off("disconnect");
-    socket.off("connect_error");
-    socket.off("text-message");
-    socket.off("audio-chunk");
-
-    // Add listeners
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
-    socket.on("connect_error", handleError);
-    socket.on("text-message", handleText);
-    socket.on("audio-chunk", handleAudio);
-
-    // Cleanup function
-    return () => {
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off("connect_error", handleError);
-      socket.off("text-message", handleText);
-      socket.off("audio-chunk", handleAudio);
-    };
+    setupSocketListeners();
   }, []);
 
   async function playNovaPcmBase64Audio(base64Data) {
@@ -388,9 +374,10 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   }
 
   // Send text to Nova Sonic
-  function sendTextToNova() {
+  async function sendTextToNova() {
     if (novaTextInput.trim()) {
       console.log("📝 Sending text to Nova:", novaTextInput);
+      const socket = await getSocket();
       socket.emit("text-input", { text: novaTextInput });
       setNovaTextInput("");
     }

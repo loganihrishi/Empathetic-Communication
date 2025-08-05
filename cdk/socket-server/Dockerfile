@@ -16,6 +16,7 @@ RUN pip3 install --break-system-packages -r requirements.txt
 
 # Copy server files
 COPY server.js ./
+COPY auth.js ./
 
 ENV AWS_DEFAULT_REGION=us-east-1
 

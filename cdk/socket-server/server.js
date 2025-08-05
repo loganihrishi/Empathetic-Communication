@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { verifyToken, getStsCredentials } = require("./auth");
 
 const app = express();
 const server = createServer(app);
@@ -17,8 +18,26 @@ app.get("/health", (req, res) => {
 });
 
 // ─── Socket.IO Connection ─────────────────────────────────────────────────────
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication token required'));
+    }
+    
+    const decoded = await verifyToken(token);
+    socket.userId = decoded.sub;
+    socket.userEmail = decoded.email;
+    console.log('🔐 User authenticated:', socket.userEmail);
+    next();
+  } catch (err) {
+    console.error('🔐 Authentication failed:', err.message);
+    next(new Error('Authentication failed'));
+  }
+});
+
 io.on("connection", (socket) => {
-  console.log("🔌 CLIENT CONNECTED:", socket.id);
+  console.log("🔌 CLIENT CONNECTED:", socket.id, "User:", socket.userEmail);
   console.log(
     process.env.SM_DB_CREDENTIALS
       ? "🔐 DB CREDENTIALS LOADED"
@@ -41,7 +60,7 @@ io.on("connection", (socket) => {
   });
 
   // ─── Start Nova Sonic ──────────────────────────────────────────────────────
-  socket.on("start-nova-sonic", (config = {}) => {
+  socket.on("start-nova-sonic", async (config = {}) => {
     console.log("🚀 Starting Nova Sonic session for client:", socket.id);
     console.log("🎙️ Voice configuration:", config);
 
@@ -55,16 +74,22 @@ io.on("connection", (socket) => {
     }
     novaReady = false;
 
+    // Get STS credentials from Cognito token
+    const stsCredentials = await getStsCredentials(socket.handshake.auth.token);
+    
     // Spawn the actual CLI entrypoint, unbuffered, passing env vars
     const PORT = process.env.PORT || 80;
     novaProcess = spawn("python3", ["nova_sonic.py"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
-
         SOCKET_URL: `http://127.0.0.1:${PORT}`,
         SESSION_ID: config.session_id || "default",
         VOICE_ID: config.voice_id || "",
+        USER_ID: socket.userId || "anonymous",
+        AWS_ACCESS_KEY_ID: stsCredentials.AccessKeyId,
+        AWS_SECRET_ACCESS_KEY: stsCredentials.SecretKey,
+        AWS_SESSION_TOKEN: stsCredentials.SessionToken,
         SSL_VERIFY: "false",
         SM_DB_CREDENTIALS: process.env.SM_DB_CREDENTIALS || "",
         RDS_PROXY_ENDPOINT: process.env.RDS_PROXY_ENDPOINT || "",

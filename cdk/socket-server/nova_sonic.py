@@ -29,15 +29,7 @@ OUTPUT_SAMPLE_RATE = 24000
 CHANNELS = 1
 CHUNK_SIZE = 1024
 
-session = boto3.Session()
-creds = session.get_credentials()
-frozen_creds = creds.get_frozen_credentials()
-
-os.environ['AWS_ACCESS_KEY_ID'] = creds.access_key
-os.environ['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
-os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
-if creds.token:
-    os.environ['AWS_SESSION_TOKEN'] = creds.token
+# STS credentials from Cognito will be passed via environment variables
 
 
 
@@ -57,19 +49,11 @@ def get_pg_connection():
 class NovaSonic:
 
     def refresh_env_credentials(self):
-        global creds, frozen_creds
-        # Refresh AWS credentials from the environment
-        session = boto3.Session()
-        creds = session.get_credentials()
-        frozen_creds = creds.get_frozen_credentials()
-        
-        os.environ['AWS_ACCESS_KEY_ID'] = creds.access_key
-        os.environ['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
-        if creds.token:
-            os.environ['AWS_SESSION_TOKEN'] = creds.token
+        # Credentials already set by server.js via STS
+        pass
 
     def __init__(self, model_id='amazon.nova-sonic-v1:0', region='us-east-1', socket_client=None, voice_id=None, session_id=None):
-        self.refresh_env_credentials()
+        self.user_id = os.getenv("USER_ID")  # Get authenticated user ID
         self.model_id = model_id
         self.region = region
         self.client = None
@@ -87,7 +71,6 @@ class NovaSonic:
 
     def _init_client(self):
         """Initialize the Bedrock Client for Nova"""
-        self.refresh_env_credentials()
         config = Config(
             endpoint_uri=f"https://bedrock-runtime.{self.region}.amazonaws.com",
             region=self.region,
