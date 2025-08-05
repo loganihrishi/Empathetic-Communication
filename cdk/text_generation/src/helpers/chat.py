@@ -69,7 +69,7 @@ def get_bedrock_llm(
     temperature: float = 0
 ) -> ChatBedrock:
     """
-    Retrieve a Bedrock LLM instance.
+    Retrieve a Bedrock LLM instance with optional guardrail support.
 
     Args:
     bedrock_llm_id (str): The unique identifier for the Bedrock LLM model.
@@ -77,11 +77,32 @@ def get_bedrock_llm(
 
     Returns:
     ChatBedrock: An instance of the Bedrock LLM.
+    
+    Note:
+    To enable Bedrock guardrails, set the BEDROCK_GUARDRAIL_ID environment variable
+    to your guardrail ID. If not set, the system will rely on system prompt protection.
     """
-    return ChatBedrock(
-        model_id=bedrock_llm_id,
-        model_kwargs=dict(temperature=temperature),
-    )
+    import os
+    
+    # Check for optional guardrail configuration
+    guardrail_id = os.environ.get('BEDROCK_GUARDRAIL_ID')
+    
+    if guardrail_id and guardrail_id.strip():
+        logger.info(f"Using Bedrock guardrail: {guardrail_id}")
+        return ChatBedrock(
+            model_id=bedrock_llm_id,
+            model_kwargs=dict(temperature=temperature),
+            guardrails={
+                "guardrailIdentifier": guardrail_id,
+                "guardrailVersion": "DRAFT"  # Change to your version: "1", "2", or "DRAFT"
+            }
+        )
+    else:
+        logger.info("Using system prompt protection (no guardrail configured)")
+        return ChatBedrock(
+            model_id=bedrock_llm_id,
+            model_kwargs=dict(temperature=temperature),
+        )
 
 def get_student_query(raw_query: str) -> str:
     """
@@ -367,6 +388,7 @@ def get_response(
         )
         if not response:
             response = "I'm sorry, I cannot provide a response to that query."
+                        
     except Exception as e:
         logger.error(f"Response generation error: {e}")
         response = "I'm sorry, I cannot provide a response to that query."

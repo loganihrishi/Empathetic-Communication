@@ -938,6 +938,7 @@ export class ApiGatewayStack extends cdk.Stack {
           BEDROCK_LLM_PARAM: bedrockLLMParameter.parameterName,
           EMBEDDING_MODEL_PARAM: embeddingModelParameter.parameterName,
           TABLE_NAME_PARAM: tableNameParameter.parameterName,
+          BEDROCK_GUARDRAIL_ID: "", // Optional: Leave empty to disable guardrails, add your guardrail ID to enable
         },
       }
     );
@@ -957,7 +958,11 @@ export class ApiGatewayStack extends cdk.Stack {
     // Custom policy statement for Bedrock access
     const bedrockPolicyStatement = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ["bedrock:InvokeModel", "bedrock:InvokeEndpoint"],
+      actions: [
+        "bedrock:InvokeModel", 
+        "bedrock:InvokeEndpoint",
+        "bedrock:ApplyGuardrail"  // Required for guardrails
+      ],
       resources: [
         "arn:aws:bedrock:" +
           this.region +
@@ -966,6 +971,7 @@ export class ApiGatewayStack extends cdk.Stack {
           this.region +
           "::foundation-model/amazon.titan-embed-text-v2:0",
         "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-pro-v1:0",
+        `arn:aws:bedrock:${this.region}:${this.account}:guardrail/*`  // Guardrail access
       ],
     });
 
