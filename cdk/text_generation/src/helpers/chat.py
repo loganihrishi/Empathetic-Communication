@@ -146,7 +146,8 @@ def get_response(
     system_prompt: str,
     patient_age: str,
     patient_prompt: str,
-    llm_completion: bool
+    llm_completion: bool,
+    stream: bool = False
 ) -> dict:
     """
     Generates a response to a query using the LLM and a history-aware retriever for context.
@@ -190,7 +191,7 @@ def get_response(
             feedback = empathy_evaluation.get('feedback', '')
             
             # Use markdown formatting with star ratings and icons
-            empathy_feedback = f"**Empathy Coach:**\n\n"
+            empathy_feedback = f"**Empathy Coach:**\\n\\n"
             
             # Add star rating based on calculated overall score
             if overall_score == 1:
@@ -214,34 +215,34 @@ def get_response(
                 
             # Display overall score and breakdown
             overall_level = get_empathy_level_name(overall_score)
-            empathy_feedback += f"**Overall Empathy Score:** {overall_level} {stars}\n\n"
+            empathy_feedback += f"**Overall Empathy Score:** {overall_level} {stars}\\n\\n"
             
             # Display individual category scores
-            empathy_feedback += f"**Category Breakdown:**\n"
+            empathy_feedback += f"**Category Breakdown:**\\n"
             
             # Perspective-Taking
             pt_score = empathy_evaluation.get('perspective_taking', 3)
             pt_level = get_empathy_level_name(pt_score)
             pt_stars = "⭐" * pt_score + f" ({pt_score}/5)"
-            empathy_feedback += f"• Perspective-Taking: {pt_level} {pt_stars}\n"
+            empathy_feedback += f"• Perspective-Taking: {pt_level} {pt_stars}\\n"
             
             # Emotional Resonance
             er_score = empathy_evaluation.get('emotional_resonance', 3)
             er_level = get_empathy_level_name(er_score)
             er_stars = "⭐" * er_score + f" ({er_score}/5)"
-            empathy_feedback += f"• Emotional Resonance/Compassionate Care: {er_level} {er_stars}\n"
+            empathy_feedback += f"• Emotional Resonance/Compassionate Care: {er_level} {er_stars}\\n"
             
             # Acknowledgment
             ack_score = empathy_evaluation.get('acknowledgment', 3)
             ack_level = get_empathy_level_name(ack_score)
             ack_stars = "⭐" * ack_score + f" ({ack_score}/5)"
-            empathy_feedback += f"• Acknowledgment of Patient's Experience: {ack_level} {ack_stars}\n"
+            empathy_feedback += f"• Acknowledgment of Patient's Experience: {ack_level} {ack_stars}\\n"
             
             # Language & Communication
             lang_score = empathy_evaluation.get('language_communication', 3)
             lang_level = get_empathy_level_name(lang_score)
             lang_stars = "⭐" * lang_score + f" ({lang_score}/5)"
-            empathy_feedback += f"• Language & Communication: {lang_level} {lang_stars}\n\n"
+            empathy_feedback += f"• Language & Communication: {lang_level} {lang_stars}\\n\\n"
             
             # Add Cognitive vs Affective Empathy breakdown (already calculated above)
             cognitive_level = get_empathy_level_name(cognitive_score)
@@ -249,16 +250,16 @@ def get_response(
             cognitive_stars = "⭐" * cognitive_score + f" ({cognitive_score}/5)"
             affective_stars = "⭐" * affective_score + f" ({affective_score}/5)"
             
-            empathy_feedback += f"**Empathy Type Analysis:**\n"
-            empathy_feedback += f"• Cognitive Empathy (Understanding): {cognitive_level} {cognitive_stars}\n"
-            empathy_feedback += f"• Affective Empathy (Feeling): {affective_level} {affective_stars}\n\n"
+            empathy_feedback += f"**Empathy Type Analysis:**\\n"
+            empathy_feedback += f"• Cognitive Empathy (Understanding): {cognitive_level} {cognitive_stars}\\n"
+            empathy_feedback += f"• Affective Empathy (Feeling): {affective_level} {affective_stars}\\n\\n"
             
-            empathy_feedback += f"**Realism Assessment:** Your response is {realism_flag} {realism_icon}\n\n"
+            empathy_feedback += f"**Realism Assessment:** Your response is {realism_flag} {realism_icon}\\n\\n"
             
             # Add LLM-as-a-Judge reasoning and detailed feedback
             judge_reasoning = empathy_evaluation.get('judge_reasoning', {})
             if judge_reasoning:
-                empathy_feedback += f"**Coach Assessment:**\n"
+                empathy_feedback += f"**Coach Assessment:**\\n"
                 if 'overall_assessment' in judge_reasoning:
                     # Convert third-person to second-person and soften tone
                     assessment = judge_reasoning['overall_assessment']
@@ -267,49 +268,49 @@ def get_response(
                     assessment = assessment.replace("demonstrates", "show")
                     assessment = assessment.replace("fails to", "could better")
                     assessment = assessment.replace("lacks", "would benefit from more")
-                    empathy_feedback += f"{assessment}\n\n"
+                    empathy_feedback += f"{assessment}\\n\\n"
             
             if feedback:
                 if isinstance(feedback, dict):  # Structured feedback from LLM Judge
                     # Add strengths
                     if 'strengths' in feedback and feedback['strengths']:
-                        empathy_feedback += f"**Strengths:**\n"
+                        empathy_feedback += f"**Strengths:**\\n"
                         for strength in feedback['strengths']:
-                            empathy_feedback += f"• {strength}\n"
-                        empathy_feedback += "\n"
+                            empathy_feedback += f"• {strength}\\n"
+                        empathy_feedback += "\\n"
                     
                     # Add areas for improvement
                     if 'areas_for_improvement' in feedback and feedback['areas_for_improvement']:
-                        empathy_feedback += f"**Areas for improvement:**\n"
+                        empathy_feedback += f"**Areas for improvement:**\\n"
                         for area in feedback['areas_for_improvement']:
-                            empathy_feedback += f"• {area}\n"
-                        empathy_feedback += "\n"
+                            empathy_feedback += f"• {area}\\n"
+                        empathy_feedback += "\\n"
                     
                     # Add why realistic/unrealistic with judge reasoning
                     if 'why_realistic' in feedback and feedback['why_realistic']:
-                        empathy_feedback += f"**Your response is {realism_flag} because:** {feedback['why_realistic']}\n\n"
+                        empathy_feedback += f"**Your response is {realism_flag} because:** {feedback['why_realistic']}\\n\\n"
                     elif 'why_unrealistic' in feedback and feedback['why_unrealistic']:
-                        empathy_feedback += f"**Your response is {realism_flag} because:** {feedback['why_unrealistic']}\n\n"
+                        empathy_feedback += f"**Your response is {realism_flag} because:** {feedback['why_unrealistic']}\\n\\n"
                     
                     # Add improvement suggestions
                     if 'improvement_suggestions' in feedback and feedback['improvement_suggestions']:
-                        empathy_feedback += f"**Coach Recommendations:**\n"
+                        empathy_feedback += f"**Coach Recommendations:**\\n"
                         for suggestion in feedback['improvement_suggestions']:
-                            empathy_feedback += f"• {suggestion}\n"
-                        empathy_feedback += "\n"
+                            empathy_feedback += f"• {suggestion}\\n"
+                        empathy_feedback += "\\n"
                     
                     # Add alternative phrasing
                     if 'alternative_phrasing' in feedback and feedback['alternative_phrasing']:
-                        empathy_feedback += f"**Coach-Recommended Approach:** *{feedback['alternative_phrasing']}*\n\n"
+                        empathy_feedback += f"**Coach-Recommended Approach:** *{feedback['alternative_phrasing']}*\\n\\n"
                         
                 elif isinstance(feedback, str) and len(feedback) > 10:  # Simple string feedback
-                    empathy_feedback += f"**Feedback:** {feedback}\n"
+                    empathy_feedback += f"**Feedback:** {feedback}\\n"
                 else:
-                    empathy_feedback += f"**Feedback:** Unable to provide detailed feedback at this time.\n"
+                    empathy_feedback += f"**Feedback:** Unable to provide detailed feedback at this time.\\n"
             else:
-                empathy_feedback += "**Feedback:** System temporarily unavailable.\n"
+                empathy_feedback += "**Feedback:** System temporarily unavailable.\\n"
                 
-            empathy_feedback += "---\n\n" # Clean separator between feedback and AI response
+            empathy_feedback += "---\\n\\n" # Clean separator between feedback and AI response
     
     completion_string = """
                 Once I, the pharmacy student, have give you a diagnosis, politely leave the conversation and wish me goodbye.
@@ -381,17 +382,28 @@ def get_response(
     # Generate the response
     response = ""
     try:
-        response = generate_response(
-            conversational_rag_chain,
-            query,
-            session_id
-        )
-        if not response:
-            response = "I'm sorry, I cannot provide a response to that query."
+        if stream:
+            response = generate_streaming_response(
+                conversational_rag_chain,
+                query,
+                session_id,
+                empathy_feedback
+            )
+        else:
+            response = generate_response(
+                conversational_rag_chain,
+                query,
+                session_id
+            )
+            if not response:
+                response = "I'm sorry, I cannot provide a response to that query."
                         
     except Exception as e:
         logger.error(f"Response generation error: {e}")
         response = "I'm sorry, I cannot provide a response to that query."
+    
+    if stream:
+        return {"stream_data": response}
     
     result = get_llm_output(response, llm_completion, empathy_feedback)
     if empathy_evaluation:
@@ -431,6 +443,65 @@ def generate_response(conversational_rag_chain: object, query: str, session_id: 
     except Exception as e:
         logger.error(f"Error generating response in session {session_id}: {e}")
         raise e
+
+def generate_streaming_response(conversational_rag_chain: object, query: str, session_id: str, empathy_feedback: str = "") -> str:
+    """
+    Generates a streaming response using Server-Sent Events format.
+    
+    Args:
+    conversational_rag_chain: The Conversational RAG chain object that processes the query.
+    query (str): The input query for which the response is being generated.
+    session_id (str): The unique identifier for the current conversation session.
+    empathy_feedback (str): Empathy feedback to include in the stream.
+    
+    Returns:
+    str: Server-Sent Events formatted stream data.
+    """
+    import json
+    
+    try:
+        # Start the stream with empathy feedback if available
+        stream_data = ""
+        
+        if empathy_feedback:
+            stream_data += f"data: {json.dumps({'type': 'empathy', 'content': empathy_feedback})}\n\n"
+        
+        # Stream the AI response
+        stream_data += f"data: {json.dumps({'type': 'start', 'content': ''})}\n\n"
+        
+        # Get the full response (in a real streaming implementation, this would be chunked)
+        full_response = conversational_rag_chain.invoke(
+            {
+                "input": query
+            },
+            config={
+                "configurable": {"session_id": session_id}
+            },
+        )["answer"]
+        
+        # Simulate streaming by breaking response into chunks
+        words = full_response.split()
+        accumulated_text = ""
+        
+        for i, word in enumerate(words):
+            accumulated_text += word + " "
+            
+            # Send chunk every 3-5 words to simulate typing
+            if (i + 1) % 4 == 0 or i == len(words) - 1:
+                stream_data += f"data: {json.dumps({'type': 'chunk', 'content': accumulated_text.strip()})}\\n\\n"
+        
+        # End the stream
+        stream_data += f"data: {json.dumps({'type': 'end', 'content': full_response})}\\n\\n"
+        stream_data += "data: [DONE]\\n\\n"
+        
+        return stream_data
+        
+    except Exception as e:
+        logger.error(f"Error generating streaming response in session {session_id}: {e}")
+        error_msg = "I am sorry, I cannot provide a response to that query."
+        error_stream = f"data: {json.dumps({'type': 'error', 'content': error_msg})}\\n\\n"
+        error_stream += "data: [DONE]\\n\\n"
+        return error_stream
 
 def save_message_to_db(session_id: str, student_sent: bool, message_content: str, empathy_evaluation: dict = None):
     """
@@ -497,7 +568,7 @@ def get_llm_output(response: str, llm_completion: bool, empathy_feedback: str = 
     completion_sentence = " I really appreciate your feedback. You may continue practicing with other patients. Goodbye."
     
     # Add Patient Response header to the AI response, but not as part of empathy feedback
-    patient_response_header = "**Patient Response:**\n"
+    patient_response_header = "**Patient Response:**\\n"
 
     if not llm_completion:
         return dict(
@@ -545,7 +616,7 @@ def split_into_sentences(paragraph: str) -> list[str]:
     resulting list contains sentences extracted from the input paragraph.
     """
     # Regular expression pattern
-    sentence_endings = r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s'
+    sentence_endings = r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s'
     sentences = re.split(sentence_endings, paragraph)
     return sentences
 

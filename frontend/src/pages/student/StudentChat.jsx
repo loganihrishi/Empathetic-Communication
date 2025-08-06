@@ -93,6 +93,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   const [isEmpathyCoachOpen, setIsEmpathyCoachOpen] = useState(false);
   const [empathySummary, setEmpathySummary] = useState(null);
   const [isEmpathyLoading, setIsEmpathyLoading] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const [patientInfoFiles, setPatientInfoFiles] = useState([]);
   const [isInfoLoading, setIsInfoLoading] = useState(false);
@@ -445,6 +447,80 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   };
 
   // Function to fetch empathy summary
+  // Handle streaming response from text generation
+  const handleStreamingResponse = async (url, authToken, message, sessionId) => {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: authToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message_content: message,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate text: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullResponse = "";
+      let empathyFeedback = "";
+      let sessionName = "New Chat";
+      
+      setIsStreaming(true);
+      setStreamingMessage("");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              setIsStreaming(false);
+              // Create the final AI message
+              if (fullResponse) {
+                await retrieveKnowledgeBase(fullResponse, sessionId);
+              }
+              return { llm_output: fullResponse || "No response received", session_name: sessionName, llm_verdict: false };
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              
+              if (parsed.type === 'empathy' && parsed.content) {
+                empathyFeedback = parsed.content;
+              } else if (parsed.type === 'chunk' && parsed.content) {
+                setStreamingMessage(parsed.content);
+              } else if (parsed.type === 'end' && parsed.content) {
+                fullResponse = parsed.content;
+                setStreamingMessage(""); // Clear streaming message when done
+              }
+            } catch (e) {
+              console.warn('Failed to parse streaming data:', data);
+            }
+          }
+        }
+      }
+
+      return { llm_output: fullResponse, session_name: sessionName, llm_verdict: false };
+    } catch (error) {
+      setIsStreaming(false);
+      setStreamingMessage("");
+      throw error;
+    }
+  };
+
   const fetchEmpathySummary = async () => {
     if (!session || !patient) return;
 
@@ -567,7 +643,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   }
 
   const handleSubmit = () => {
-    if (isSubmitting || isAItyping || creatingSession) return;
+    if (isSubmitting || isAItyping || creatingSession || isStreaming) return;
     setIsSubmitting(true);
     let newSession;
     let authToken;
@@ -645,26 +721,10 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           newSession.session_id
         )}&patient_id=${encodeURIComponent(
           patient.patient_id
-        )}&session_name=${encodeURIComponent(newSession.session_name)}`;
+        )}&session_name=${encodeURIComponent(newSession.session_name)}&stream=true`;
 
-        return fetch(textGenUrl, {
-          method: "POST",
-          headers: {
-            Authorization: authToken,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message_content: message,
-          }),
-        });
-      })
-      .then((textGenResponse) => {
-        if (!textGenResponse.ok) {
-          throw new Error(
-            `Failed to generate text: ${textGenResponse.statusText}`
-          );
-        }
-        return textGenResponse.json();
+        // Handle streaming response
+        return handleStreamingResponse(textGenUrl, authToken, message, newSession.session_id);
       })
       .then((textGenData) => {
         setSession((prevSession) => ({
@@ -720,11 +780,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         if (!response1.ok || !response2.ok) {
           throw new Error("Failed to fetch endpoints");
         }
-
-        return retrieveKnowledgeBase(
-          textGenData.llm_output,
-          newSession.session_id
-        );
+        // Note: retrieveKnowledgeBase is now called within handleStreamingResponse
+        return textGenData;
       })
       .catch((error) => {
         setIsSubmitting(false);
@@ -814,31 +871,14 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           sessionData.session_id
         )}&patient_id=${encodeURIComponent(
           patient.patient_id
-        )}&session_name=${encodeURIComponent("New chat")}`;
+        )}&session_name=${encodeURIComponent("New chat")}&stream=true`;
 
         console.log("Session data for text generation:", sessionData);
 
-        return fetch(textGenUrl, {
-          method: "POST",
-          headers: {
-            Authorization: authToken,
-            "Content-Type": "application/json",
-          },
-        });
-      })
-      .then((textResponse) => {
-        if (!textResponse.ok) {
-          throw new Error(
-            `Failed to create initial message: ${textResponse.statusText}`
-          );
-        }
-        return textResponse.json();
+        // Handle streaming for initial message
+        return handleStreamingResponse(textGenUrl, authToken, "", sessionData.session_id);
       })
       .then((textResponseData) => {
-        retrieveKnowledgeBase(
-          textResponseData.llm_output,
-          sessionData.session_id
-        );
         console.log("sessionData:", sessionData);
         return sessionData;
       })
@@ -1053,6 +1093,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   useEffect(() => {
     if (session) {
       setCurrentSessionId(session.session_id);
+      setStreamingMessage(""); // Clear any streaming message when switching sessions
+      setIsStreaming(false);
       getMessages();
     }
   }, [session]);
@@ -1283,9 +1325,18 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             )
           )}
 
-          {/* TypingIndicator */}
+          {/* Streaming Message Display */}
+          {isStreaming && streamingMessage && (
+            <AIMessage
+              message={streamingMessage}
+              profilePicture={profilePicture}
+              name={patient?.patient_name}
+              isStreaming={true}
+            />
+          )}
 
-          {isAItyping && (
+          {/* TypingIndicator */}
+          {(isAItyping && !isStreaming) && (
             <TypingIndicator patientName={patient?.patient_name} />
           )}
           <div ref={messagesEndRef} />
@@ -1333,7 +1384,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             {/* Send Button */}
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || isAItyping || creatingSession}
+              disabled={isSubmitting || isAItyping || creatingSession || isStreaming}
               className="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors duration-200 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg

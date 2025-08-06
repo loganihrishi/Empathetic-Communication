@@ -34,7 +34,7 @@ const MarkdownRender = ({ content }) => {
   );
 };
 
-const AIMessage = ({ message, profilePicture, name = "AI" }) => {
+const AIMessage = ({ message, profilePicture, name = "AI", isStreaming = false }) => {
   // Process the message to remove duplicated content
   const processedMessage = useMemo(() => {
     // Check if the message contains duplicated text
@@ -93,6 +93,9 @@ const AIMessage = ({ message, profilePicture, name = "AI" }) => {
         <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-lg px-4 py-3 shadow-sm">
           <div className="text-sm text-gray-900 leading-relaxed">
             <MarkdownRender content={processedMessage} />
+            {isStreaming && (
+              <span className="inline-block w-2 h-5 bg-emerald-500 ml-1 animate-pulse" />
+            )}
           </div>
         </div>
       </div>
@@ -103,7 +106,8 @@ const AIMessage = ({ message, profilePicture, name = "AI" }) => {
 AIMessage.propTypes = {
   message: PropTypes.string.isRequired,
   profilePicture: PropTypes.string,
-  name: PropTypes.string, 
+  name: PropTypes.string,
+  isStreaming: PropTypes.bool,
 };
 
 export default AIMessage;

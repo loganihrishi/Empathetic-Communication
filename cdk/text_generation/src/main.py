@@ -305,6 +305,10 @@ def handler(event, context):
 
     try:
         logger.info("Generating response from the LLM.")
+        # Check if streaming is requested
+        query_params = event.get("queryStringParameters", {})
+        stream = query_params.get("stream", "false").lower() == "true"
+        
         response = get_response(
             query=student_query,
             patient_name=patient_name,
@@ -315,7 +319,8 @@ def handler(event, context):
             system_prompt=system_prompt,
             patient_age=patient_age,
             patient_prompt=patient_prompt,
-            llm_completion=llm_completion
+            llm_completion=llm_completion,
+            stream=stream
         )
     except Exception as e:
         logger.error(f"Error getting response: {e}")
@@ -343,22 +348,41 @@ def handler(event, context):
         logger.error(f"Error updating session name: {e}")
         session_name = "New Chat"
 
-    logger.info("Returning the generated response.")
-
-    empathy_eval = response.get('empathy_evaluation', None)
-    logger.info(f"LLM RESPONSE: {empathy_eval}")
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-        },
-        "body": json.dumps({
-            "session_name": session_name,
-            "llm_output": response.get("llm_output", "LLM failed to create response"),
-            "llm_verdict": response.get("llm_verdict", "LLM failed to create verdict"),
-            "empathy_evaluation": response.get("empathy_evaluation", None)
-        })
-    }
+    # Check if streaming is requested
+    query_params = event.get("queryStringParameters", {})
+    stream = query_params.get("stream", "false").lower() == "true"
+    
+    if stream:
+        logger.info("Returning streaming response.")
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+            },
+            "body": response.get("stream_data", ""),
+            "isBase64Encoded": False
+        }
+    else:
+        logger.info("Returning the generated response.")
+        empathy_eval = response.get('empathy_evaluation', None)
+        logger.info(f"LLM RESPONSE: {empathy_eval}")
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+            },
+            "body": json.dumps({
+                "session_name": session_name,
+                "llm_output": response.get("llm_output", "LLM failed to create response"),
+                "llm_verdict": response.get("llm_verdict", "LLM failed to create verdict"),
+                "empathy_evaluation": response.get("empathy_evaluation", None)
+            })
+        }
