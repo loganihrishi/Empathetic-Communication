@@ -403,6 +403,28 @@ def get_response(
         response = "I'm sorry, I cannot provide a response to that query."
     
     if stream:
+        # Save student message with empathy evaluation to PostgreSQL for streaming
+        if query.strip() and "Greet me" not in query and query.strip() != 'introduce yourself briefly' and query.strip() != 'say "hi"':
+            save_message_to_db(session_id, True, query, empathy_evaluation)
+        
+        # For streaming, we need to extract the actual response to save
+        # Parse the stream data to get the final response
+        lines = response.split('\n')
+        final_response = ""
+        for line in lines:
+            if line.startswith('data: '):
+                try:
+                    data = json.loads(line[6:])
+                    if data.get('type') == 'end':
+                        final_response = data.get('content', '')
+                        break
+                except:
+                    continue
+        
+        # Save AI response to PostgreSQL
+        if final_response:
+            save_message_to_db(session_id, False, final_response, None)
+        
         return {"stream_data": response}
     
     result = get_llm_output(response, llm_completion, empathy_feedback)
@@ -488,19 +510,19 @@ def generate_streaming_response(conversational_rag_chain: object, query: str, se
             
             # Send chunk every 3-5 words to simulate typing
             if (i + 1) % 4 == 0 or i == len(words) - 1:
-                stream_data += f"data: {json.dumps({'type': 'chunk', 'content': accumulated_text.strip()})}\\n\\n"
+                stream_data += f"data: {json.dumps({'type': 'chunk', 'content': accumulated_text.strip()})}\n\n"
         
         # End the stream
-        stream_data += f"data: {json.dumps({'type': 'end', 'content': full_response})}\\n\\n"
-        stream_data += "data: [DONE]\\n\\n"
+        stream_data += f"data: {json.dumps({'type': 'end', 'content': full_response})}\n\n"
+        stream_data += "data: [DONE]\n\n"
         
         return stream_data
         
     except Exception as e:
         logger.error(f"Error generating streaming response in session {session_id}: {e}")
         error_msg = "I am sorry, I cannot provide a response to that query."
-        error_stream = f"data: {json.dumps({'type': 'error', 'content': error_msg})}\\n\\n"
-        error_stream += "data: [DONE]\\n\\n"
+        error_stream = f"data: {json.dumps({'type': 'error', 'content': error_msg})}\n\n"
+        error_stream += "data: [DONE]\n\n"
         return error_stream
 
 def save_message_to_db(session_id: str, student_sent: bool, message_content: str, empathy_evaluation: dict = None):
