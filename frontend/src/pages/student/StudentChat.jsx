@@ -90,6 +90,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const audioRef = useRef(null);
+  // Gate for allowing audio playback from Nova Sonic
+  const allowAudioRef = useRef(false);
   const [novaStarted, setNovaStarted] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [session, setSession] = useState(null);
@@ -345,6 +347,10 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
       };
 
       const handleAudio = (data) => {
+        // Drop audio immediately if overlay is closed or playback is disabled
+        if (!allowAudioRef.current) {
+          return;
+        }
         console.log("🎵 Received audio chunk, length:", data.data?.length || 0);
         if (data.data) {
           console.log("🔊 Playing audio from StudentChat");
@@ -1459,11 +1465,16 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             <button
               onClick={() => {
                 if (isRecording) {
+                  // Stop immediately
+                  allowAudioRef.current = false;
+                  stopAudioPlayback();
                   stopSpokenLLM();
                   setIsRecording(false);
                   setShowVoiceOverlay(false);
                   setLoading(false);
                 } else {
+                  // Start voice; allow audio playback
+                  allowAudioRef.current = true;
                   setShowVoiceOverlay(true);
                   fetchVoiceID().then((voice_id) => {
                     console.log("Session ID:", currentSessionId);
@@ -1740,6 +1751,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[3003] bg-white/90 backdrop-blur-md border border-gray-200 shadow-lg rounded-full px-3 py-2 flex items-center space-x-3">
               <button
                 onClick={() => {
+                  // Disable any further playback and stop immediately
+                  allowAudioRef.current = false;
                   stopAudioPlayback();
                   stopSpokenLLM();
                   setIsRecording(false);
