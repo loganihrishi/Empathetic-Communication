@@ -1344,7 +1344,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           <button
             onClick={fetchEmpathySummary}
             disabled={isEmpathyLoading}
-            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-start space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PsychologyIcon className="w-5 h-5" />
             {sidebarWidth > 160 && <span>Empathy Coach</span>}
@@ -1353,7 +1353,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           {/* Notes Button */}
           <button
             onClick={() => setIsNotesOpen(true)}
-            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-start space-x-2"
           >
             <DescriptionIcon className="w-5 h-5" />
             {sidebarWidth > 160 && <span>Notes</span>}
@@ -1362,7 +1362,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           {/* Patient Info Button */}
           <button
             onClick={() => setIsPatientInfoOpen(true)}
-            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-start space-x-2"
           >
             <InfoIcon className="w-5 h-5" />
             {sidebarWidth > 160 && <span>Patient Info</span>}
@@ -1371,7 +1371,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
           {/* Reveal Answer Button */}
           <button
             onClick={handleOpenConfirm}
-            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-center space-x-2"
+            className="w-full bg-white border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 rounded-lg py-3 px-4 font-medium transition-all duration-200 flex items-center justify-start space-x-2"
           >
             <KeyIcon className="w-5 h-5" />
             {sidebarWidth > 160 && <span>Reveal Answer</span>}
