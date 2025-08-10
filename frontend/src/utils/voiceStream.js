@@ -16,13 +16,12 @@ let novaStartListenerAttached = false;
 let lastAudio = null;
 let lastAudioCtx = null;
 
-
 export async function startSpokenLLM(
   voice_id = "matthew",
   setLoading,
-  session_id
+  session_id,
+  options = {}
 ) {
-
   if (novaStarted) {
     console.warn("🔁 Nova Sonic is already started.");
     return;
@@ -76,10 +75,22 @@ export async function startSpokenLLM(
     socket.connect();
   }
 
-  console.log("🚀 Requesting Nova Sonic startup");
+  const {
+    patient_name = "",
+    patient_prompt = "",
+    llm_completion = false,
+    system_prompt = "",
+  } = options || {};
+
+  console.log("🚀 Requesting Nova Sonic startup with patient context");
   socket.emit("start-nova-sonic", {
     voice_id: voice_id,
     session_id: session_id || "default",
+    // pass patient context through to server.js -> nova_sonic.py
+    patient_name,
+    patient_prompt,
+    llm_completion: !!llm_completion,
+    system_prompt,
   });
 }
 

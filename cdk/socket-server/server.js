@@ -22,17 +22,17 @@ io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
-      return next(new Error('Authentication token required'));
+      return next(new Error("Authentication token required"));
     }
-    
+
     const decoded = await verifyToken(token);
     socket.userId = decoded.sub;
     socket.userEmail = decoded.email;
-    console.log('🔐 User authenticated:', socket.userEmail);
+    console.log("🔐 User authenticated:", socket.userEmail);
     next();
   } catch (err) {
-    console.error('🔐 Authentication failed:', err.message);
-    next(new Error('Authentication failed'));
+    console.error("🔐 Authentication failed:", err.message);
+    next(new Error("Authentication failed"));
   }
 });
 
@@ -76,7 +76,7 @@ io.on("connection", (socket) => {
 
     // Get STS credentials from Cognito token
     const stsCredentials = await getStsCredentials(socket.handshake.auth.token);
-    
+
     // Spawn the actual CLI entrypoint, unbuffered, passing env vars
     const PORT = process.env.PORT || 80;
     novaProcess = spawn("python3", ["nova_sonic.py"], {
@@ -93,6 +93,12 @@ io.on("connection", (socket) => {
         SSL_VERIFY: "false",
         SM_DB_CREDENTIALS: process.env.SM_DB_CREDENTIALS || "",
         RDS_PROXY_ENDPOINT: process.env.RDS_PROXY_ENDPOINT || "",
+        // ─ Patient simulation context for Nova Sonic ─
+        PATIENT_NAME: config.patient_name || "",
+        PATIENT_PROMPT: config.patient_prompt || "",
+        LLM_COMPLETION: config.llm_completion ? "true" : "false",
+        // Optional extra instructions to mirror chat.py system_prompt if needed
+        EXTRA_SYSTEM_PROMPT: config.system_prompt || "",
       },
     });
     console.log("📡 Nova process spawned with PID:", novaProcess.pid);
@@ -201,16 +207,19 @@ io.on("connection", (socket) => {
   // ─── Text generation streaming ─────────────────────────────────────────────
   socket.on("text-generation", async (data) => {
     console.log("🚀 Text generation request:", data);
-    
+
     try {
-      const response = await fetch(`${process.env.TEXT_GENERATION_ENDPOINT}/student/text_generation?simulation_group_id=${data.simulation_group_id}&session_id=${data.session_id}&patient_id=${data.patient_id}&session_name=${data.session_name}&stream=true`, {
-        method: "POST",
-        headers: {
-          "Authorization": data.token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ message_content: data.message })
-      });
+      const response = await fetch(
+        `${process.env.TEXT_GENERATION_ENDPOINT}/student/text_generation?simulation_group_id=${data.simulation_group_id}&session_id=${data.session_id}&patient_id=${data.patient_id}&session_name=${data.session_name}&stream=true`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: data.token,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message_content: data.message }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -224,22 +233,25 @@ io.on("connection", (socket) => {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        const lines = chunk.split("\n");
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             try {
               const eventData = JSON.parse(line.slice(6));
-              socket.emit('text-stream', eventData);
+              socket.emit("text-stream", eventData);
             } catch (e) {
-              console.warn('Failed to parse SSE:', line);
+              console.warn("Failed to parse SSE:", line);
             }
           }
         }
       }
     } catch (error) {
-      console.error('Text generation error:', error);
-      socket.emit('text-stream', { type: 'error', content: 'Failed to generate response' });
+      console.error("Text generation error:", error);
+      socket.emit("text-stream", {
+        type: "error",
+        content: "Failed to generate response",
+      });
     }
   });
 

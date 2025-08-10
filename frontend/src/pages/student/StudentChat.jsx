@@ -1480,7 +1480,13 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
                   setShowVoiceOverlay(true);
                   fetchVoiceID().then((voice_id) => {
                     console.log("Session ID:", currentSessionId);
-                    startSpokenLLM(voice_id, setLoading, currentSessionId);
+                    startSpokenLLM(voice_id, setLoading, currentSessionId, {
+                      patient_name: patient?.patient_name,
+                      patient_prompt: patient?.patient_prompt,
+                      llm_completion: !!patient?.llm_completion,
+                      // If you have a group/system prompt available, pass it here; otherwise omit or keep empty
+                      system_prompt: group?.system_prompt || "",
+                    });
                   });
                   setIsRecording(true);
                   setLoading(true);

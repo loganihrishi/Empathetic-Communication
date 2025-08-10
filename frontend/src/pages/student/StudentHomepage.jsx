@@ -199,17 +199,22 @@ export const StudentHomepage = ({ setGroup }) => {
         <StudentHeader />
 
         {/* Main Content Container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-8">
           {/* Header Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="text-left">
                 <Typography
                   component="h1"
                   variant="h3"
                   className="text-3xl font-bold text-gray-900 mb-2"
+                  style={{
+                    fontFamily: "Outfit, sans-serif",
+                    fontWeight: "600",
+                    fontSize: "2rem",
+                  }}
                 >
-                  Medical Training Groups
+                  Simulation Groups
                 </Typography>
                 <Typography variant="body1" className="text-gray-600 text-lg">
                   Join simulation groups to practice patient interactions and
@@ -293,7 +298,7 @@ export const StudentHomepage = ({ setGroup }) => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
               {groups.map((group, index) => (
                 <div
                   key={index}
