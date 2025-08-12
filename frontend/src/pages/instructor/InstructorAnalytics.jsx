@@ -43,7 +43,9 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
         const response = await fetch(
           `${
             import.meta.env.VITE_API_ENDPOINT
-          }instructor/analytics?simulation_group_id=${encodeURIComponent(simulation_group_id)}`,
+          }instructor/analytics?simulation_group_id=${encodeURIComponent(
+            simulation_group_id
+          )}`,
           {
             method: "GET",
             headers: {
@@ -72,29 +74,42 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
   };
 
   return (
-    <Container sx={{ flexGrow: 1, p: 3, marginTop: 9, width: "100%", overflow: "auto" }}>
+    <Container
+      sx={{ flexGrow: 1, p: 3, marginTop: 9, width: "100%", overflow: "auto" }}
+    >
       <Typography
         color="black"
         fontStyle="semibold"
         textAlign="left"
         variant="h6"
         gutterBottom
+        sx={{ fontWeight: 600, fontSize: "1.25rem", color: "#111827" }}
       >
         {titleCase(groupName)}
       </Typography>
 
       {data.length === 0 ? (
         <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "50vh",
-          textAlign: "center",
-        }}
-      >
-          <Typography variant="h5" color="textSecondary">
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "50vh",
+            textAlign: "center",
+            backgroundColor: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+            boxShadow:
+              "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
+            px: 6,
+          }}
+        >
+          <Typography
+            variant="h5"
+            color="textSecondary"
+            sx={{ fontWeight: 500 }}
+          >
             No data to display. Please check back later.
           </Typography>
         </Box>
@@ -107,6 +122,24 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
             aria-label="patient tabs"
             variant="scrollable"
             scrollButtons="auto"
+            sx={{
+              mb: 3,
+              "& .MuiTab-root": {
+                textTransform: "none",
+                fontWeight: 500,
+                fontSize: "0.9rem",
+                borderRadius: "10px 10px 0 0",
+                minHeight: "44px",
+              },
+              "& .Mui-selected": {
+                color: "#059669 !important",
+              },
+              "& .MuiTabs-indicator": {
+                backgroundColor: "#10b981",
+                height: "3px",
+                borderRadius: "3px 3px 0 0",
+              },
+            }}
           >
             {data.map((patient, index) => (
               <Tab key={index} label={titleCase(patient.patient_name)} />
@@ -117,20 +150,27 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
             <Box
               key={index}
               hidden={tabValue !== index}
-              sx={{ marginTop: 4, paddingTop: 2 }}
+              sx={{ marginTop: 2, paddingTop: 2 }}
             >
               <Typography
                 variant="h6"
                 color="textPrimary"
                 gutterBottom
-                sx={{ marginBottom: 2 }}
+                sx={{ marginBottom: 2, fontWeight: 600, fontSize: "1.1rem" }}
               >
                 {titleCase(patient.patient_name)} Overview
               </Typography>
 
               {/* Insights Section */}
               <Box mb={4}>
-                <Paper>
+                <Paper
+                  sx={{
+                    borderRadius: "16px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow:
+                      "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
+                  }}
+                >
                   <Grid
                     container
                     spacing={2}
@@ -140,13 +180,25 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
                   >
                     {/* Instructor Completion Percentage */}
                     <Grid item xs={12} sm={6}>
-                      <Typography>Instructor Completion Percentage:</Typography>
+                      <Typography sx={{ fontWeight: 500, color: "#374151" }}>
+                        Instructor Completion Percentage:
+                      </Typography>
                       <LinearProgress
                         variant="determinate"
                         value={patient.instructor_completion_percentage || 0}
-                        sx={{ marginY: 1 }}
+                        sx={{
+                          marginY: 1,
+                          height: 8,
+                          borderRadius: 4,
+                          "& .MuiLinearProgress-bar": {
+                            backgroundColor: "#10b981",
+                          },
+                        }}
                       />
-                      <Typography textAlign="right">
+                      <Typography
+                        textAlign="right"
+                        sx={{ fontSize: "0.85rem", color: "#6b7280" }}
+                      >
                         {patient.instructor_completion_percentage.toFixed(2)}%
                       </Typography>
                     </Grid>
@@ -154,24 +206,41 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
                     {/* LLM Completion Percentage: (conditionally displayed) */}
                     {patient.llm_completion && (
                       <Grid item xs={12} sm={6}>
-                        <Typography>LLM Completion Percentage:</Typography>
+                        <Typography sx={{ fontWeight: 500, color: "#374151" }}>
+                          LLM Completion Percentage:
+                        </Typography>
                         <LinearProgress
                           variant="determinate"
                           value={patient.ai_score_percentage || 0}
-                          sx={{ marginY: 1 }}
+                          sx={{
+                            marginY: 1,
+                            height: 8,
+                            borderRadius: 4,
+                            "& .MuiLinearProgress-bar": {
+                              backgroundColor: "#059669",
+                            },
+                          }}
                         />
-                        <Typography textAlign="right">
+                        <Typography
+                          textAlign="right"
+                          sx={{ fontSize: "0.85rem", color: "#6b7280" }}
+                        >
                           {patient.ai_score_percentage.toFixed(2)}%
                         </Typography>
                       </Grid>
                     )}
+
                     {/* Student and AI Message Counts with Access Count */}
                     {patient.llm_completion && (
                       <Grid item xs={12} sm={6}>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           Student Message Count: {patient.student_message_count}
                         </Typography>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           AI Message Count: {patient.ai_message_count}
                         </Typography>
                       </Grid>
@@ -179,7 +248,9 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
 
                     {patient.llm_completion && (
                       <Grid item xs={12} sm={6}>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           Student Access Count: {patient.access_count}
                         </Typography>
                       </Grid>
@@ -187,13 +258,19 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
 
                     {!patient.llm_completion && (
                       <Grid item xs={12} sm={6}>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           Student Message Count: {patient.student_message_count}
                         </Typography>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           AI Message Count: {patient.ai_message_count}
                         </Typography>
-                        <Typography>
+                        <Typography
+                          sx={{ fontSize: "0.9rem", color: "#374151" }}
+                        >
                           Student Access Count: {patient.access_count}
                         </Typography>
                       </Grid>
@@ -203,13 +280,28 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
               </Box>
 
               {/* Message Count Chart */}
-              <Paper>
-                <Box mb={4} sx={{ height: 400, paddingBottom: 4 }}>
+              <Paper
+                sx={{
+                  borderRadius: "16px",
+                  mb: 4,
+                  border: "1px solid #e5e7eb",
+                  boxShadow:
+                    "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
+                }}
+              >
+                <Box mb={4} sx={{ height: 400, paddingBottom: 2 }}>
                   <Typography
                     color="black"
                     textAlign="left"
                     paddingLeft={2}
                     padding={2}
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      letterSpacing: ".05em",
+                      textTransform: "uppercase",
+                      color: "#374151",
+                    }}
                   >
                     Message Count
                   </Typography>
@@ -220,26 +312,33 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
                           name: "Messages",
                           StudentMessages:
                             parseInt(patient.student_message_count, 10) || 0,
-                          AIMessages: parseInt(patient.ai_message_count, 10) || 0,
+                          AIMessages:
+                            parseInt(patient.ai_message_count, 10) || 0,
                         },
                       ]}
                       margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                      barSize={20}
+                      barSize={28}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tickMargin={10} />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="name"
+                        tickMargin={10}
+                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                      />
+                      <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} />
                       <Tooltip />
                       <Legend />
                       <Bar
                         dataKey="StudentMessages"
-                        fill="#8884d8"
+                        fill="#10b981"
                         name="Student Messages"
+                        radius={[6, 6, 0, 0]}
                       />
                       <Bar
                         dataKey="AIMessages"
-                        fill="#82ca9d"
+                        fill="#059669"
                         name="AI Messages"
+                        radius={[6, 6, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -247,13 +346,27 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
               </Paper>
 
               {/* Completion Chart */}
-              <Paper>
-                <Box mb={4} sx={{ height: 400, paddingBottom: 4 }}>
+              <Paper
+                sx={{
+                  borderRadius: "16px",
+                  border: "1px solid #e5e7eb",
+                  boxShadow:
+                    "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
+                }}
+              >
+                <Box mb={4} sx={{ height: 400, paddingBottom: 2 }}>
                   <Typography
                     color="black"
                     textAlign="left"
                     paddingLeft={2}
                     padding={2}
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      letterSpacing: ".05em",
+                      textTransform: "uppercase",
+                      color: "#374151",
+                    }}
                   >
                     Completion Overview
                   </Typography>
@@ -272,23 +385,29 @@ const InstructorAnalytics = ({ groupName, simulation_group_id }) => {
                         },
                       ]}
                       margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                      barSize={20}
+                      barSize={28}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tickMargin={10} />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="name"
+                        tickMargin={10}
+                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                      />
+                      <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} />
                       <Tooltip />
                       <Legend />
                       <Bar
                         dataKey="InstructorCompletion"
-                        fill="#FFA500" // Orange for Instructor Completion
+                        fill="#f59e0b"
                         name="Instructor Completion %"
+                        radius={[6, 6, 0, 0]}
                       />
                       {patient.llm_completion && (
                         <Bar
                           dataKey="LLMCompletion"
-                          fill="#800080" // Purple for LLM Completion
+                          fill="#6366f1"
                           name="LLM Completion %"
+                          radius={[6, 6, 0, 0]}
                         />
                       )}
                     </BarChart>

@@ -44,7 +44,9 @@ const fetchInstructors = async () => {
     const adminEmail = userAttributes.email;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_ENDPOINT}admin/instructors?instructor_email=${adminEmail}`,
+      `${
+        import.meta.env.VITE_API_ENDPOINT
+      }admin/instructors?instructor_email=${adminEmail}`,
       {
         method: "GET",
         headers: {
@@ -54,7 +56,7 @@ const fetchInstructors = async () => {
       }
     );
     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    
+
     const data = await response.json();
     return data;
   } catch (error) {
@@ -144,7 +146,9 @@ export const AdminInstructors = () => {
         return;
       }
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}admin/elevate_instructor?email=${email}`,
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }admin/elevate_instructor?email=${email}`,
         {
           method: "POST",
           headers: {
@@ -185,11 +189,11 @@ export const AdminInstructors = () => {
   const handleCloseAdd = () => setOpenAddDialog(false);
 
   return (
-    <Box 
-      component="main" 
-      sx={{ 
-        flexGrow: 1, 
-        p: 3, 
+    <Box
+      component="main"
+      sx={{
+        flexGrow: 1,
+        p: 3,
         marginTop: 0.5,
         backgroundColor: "#f8fafc",
         minHeight: "100vh",
@@ -202,7 +206,8 @@ export const AdminInstructors = () => {
           overflow: "hidden",
           marginTop: 2,
           borderRadius: "16px",
-          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
           p: 0,
           maxHeight: "85vh",
           border: "1px solid #e5e7eb",
@@ -219,7 +224,7 @@ export const AdminInstructors = () => {
             backgroundColor: "white",
           }}
         >
-          <Typography 
+          <Typography
             sx={{
               color: "#1f2937",
               fontWeight: "700",
@@ -239,11 +244,13 @@ export const AdminInstructors = () => {
               textTransform: "none",
               px: 3,
               py: 1.5,
-              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              boxShadow:
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
               transition: "all 0.2s ease-in-out",
               "&:hover": {
                 backgroundColor: "#059669",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                boxShadow:
+                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                 transform: "translateY(-1px)",
               },
               "&:active": {
@@ -254,9 +261,9 @@ export const AdminInstructors = () => {
             Add Instructor
           </Button>
         </Box>
-        <TableContainer 
-          sx={{ 
-            maxHeight: "65vh", 
+        <TableContainer
+          sx={{
+            maxHeight: "65vh",
             overflowY: "auto",
             backgroundColor: "white",
             "& .MuiTableCell-root": {
@@ -270,7 +277,7 @@ export const AdminInstructors = () => {
               variant="outlined"
               value={searchQuery}
               onChange={handleSearchChange}
-              sx={{ 
+              sx={{
                 width: "100%",
                 maxWidth: "400px",
                 "& .MuiOutlinedInput-root": {
@@ -313,9 +320,9 @@ export const AdminInstructors = () => {
               <>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f9fafb" }}>
-                    <TableCell 
-                      sx={{ 
-                        width: "30%", 
+                    <TableCell
+                      sx={{
+                        width: "30%",
                         fontSize: "0.875rem",
                         fontWeight: "600",
                         color: "#374151",
@@ -325,8 +332,8 @@ export const AdminInstructors = () => {
                     >
                       First Name
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
+                    <TableCell
+                      sx={{
                         fontSize: "0.875rem",
                         fontWeight: "600",
                         color: "#374151",
@@ -336,8 +343,8 @@ export const AdminInstructors = () => {
                     >
                       Last Name
                     </TableCell>
-                    <TableCell 
-                      sx={{ 
+                    <TableCell
+                      sx={{
                         fontSize: "0.875rem",
                         fontWeight: "600",
                         color: "#374151",

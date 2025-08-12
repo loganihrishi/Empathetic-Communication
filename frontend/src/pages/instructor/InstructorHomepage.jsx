@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import {
-  Routes,
-  Route,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Routes, Route, useNavigate, useParams } from "react-router-dom";
 import { fetchAuthSession, fetchUserAttributes } from "aws-amplify/auth";
 import {
   Typography,
@@ -53,7 +48,9 @@ const GroupDetails = () => {
   const [selectedComponent, setSelectedComponent] = useState(
     "InstructorAnalytics"
   );
-  const [simulationGroupId, setSimulationGroupId] = useState(localStorage.getItem("selectedGroupId") || null);
+  const [simulationGroupId, setSimulationGroupId] = useState(
+    localStorage.getItem("selectedGroupId") || null
+  );
 
   useEffect(() => {
     if (!simulationGroupId) {
@@ -72,33 +69,53 @@ const GroupDetails = () => {
     switch (selectedComponent) {
       case "InstructorAnalytics":
         return (
-          <InstructorAnalytics groupName={groupName} simulation_group_id={simulationGroupId} />
+          <InstructorAnalytics
+            groupName={groupName}
+            simulation_group_id={simulationGroupId}
+          />
         );
       case "InstructorEditPatients":
         return (
-          <InstructorPatients groupName={groupName} simulation_group_id={simulationGroupId} />
+          <InstructorPatients
+            groupName={groupName}
+            simulation_group_id={simulationGroupId}
+          />
         );
       case "PromptSettings":
-        return <PromptSettings groupName={groupName} simulation_group_id={simulationGroupId} />;
+        return (
+          <PromptSettings
+            groupName={groupName}
+            simulation_group_id={simulationGroupId}
+          />
+        );
       case "ViewStudents":
-        return <ViewStudents groupName={groupName} simulation_group_id={simulationGroupId} />;
+        return (
+          <ViewStudents
+            groupName={groupName}
+            simulation_group_id={simulationGroupId}
+          />
+        );
       default:
         return (
-          <InstructorAnalytics groupName={groupName} simulation_group_id={simulationGroupId} />
+          <InstructorAnalytics
+            groupName={groupName}
+            simulation_group_id={simulationGroupId}
+          />
         );
     }
   };
 
   return (
-    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "#ffffff", minHeight: "100vh" }}>
       <PageContainer>
         <AppBar
           position="fixed"
-          sx={{ 
+          sx={{
             zIndex: (theme) => theme.zIndex.drawer + 1,
             backgroundColor: "white",
             color: "#1f2937",
-            boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+            boxShadow:
+              "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
           }}
           elevation={0}
         >
@@ -138,10 +155,11 @@ const InstructorHomepage = () => {
     const fetchGroups = async () => {
       try {
         const session = await fetchAuthSession();
-        var token = session.tokens.idToken
+        var token = session.tokens.idToken;
         const { email } = await fetchUserAttributes();
         const response = await fetch(
-          `${import.meta.env.VITE_API_ENDPOINT
+          `${
+            import.meta.env.VITE_API_ENDPOINT
           }instructor/groups?email=${encodeURIComponent(email)}`,
           {
             method: "GET",
@@ -218,7 +236,16 @@ const InstructorHomepage = () => {
             >
               <InstructorHeader />
             </AppBar>
-            <Box component="main" sx={{ flexGrow: 1, p: 3, marginTop: 1, overflowY: "auto", maxHeight: "calc(100vh - 64px)" }}>
+            <Box
+              component="main"
+              sx={{
+                flexGrow: 1,
+                p: 3,
+                marginTop: 1,
+                overflowY: "auto",
+                maxHeight: "calc(100vh - 64px)",
+              }}
+            >
               <Toolbar />
               <Typography
                 color="black"
@@ -271,8 +298,13 @@ const InstructorHomepage = () => {
                               cursor: "pointer",
                               transition: "background-color 0.3s",
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f5f5f5")}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "#f5f5f5")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor = "white")
+                            }
                           >
                             <TableCell sx={{ padding: "16px" }}>
                               {titleCase(row.group)}
@@ -283,13 +315,16 @@ const InstructorHomepage = () => {
                             <TableCell sx={{ padding: "16px" }}>
                               <Button
                                 variant="contained"
-                                color={row.status === "Active" ? "primary" : "secondary"}
+                                color={
+                                  row.status === "Active"
+                                    ? "primary"
+                                    : "secondary"
+                                }
                               >
                                 {row.status}
                               </Button>
                             </TableCell>
                           </TableRow>
-
                         ))}
                     </TableBody>
                     <TableFooter>
@@ -326,4 +361,4 @@ const InstructorHomepage = () => {
   );
 };
 
-export default InstructorHomepage; 
+export default InstructorHomepage;

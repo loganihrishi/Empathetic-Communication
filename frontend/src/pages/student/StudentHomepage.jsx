@@ -194,7 +194,7 @@ export const StudentHomepage = ({ setGroup }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <ThemeProvider theme={theme}>
         <StudentHeader />
 
@@ -234,12 +234,14 @@ export const StudentHomepage = ({ setGroup }) => {
                   fontWeight: "600",
                   px: 4,
                   py: 1.5,
-                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  boxShadow:
+                    "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
                   transition: "all 0.2s ease-in-out",
                   "&:hover": {
                     backgroundColor: "#059669",
                     transform: "translateY(-2px)",
-                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                    boxShadow:
+                      "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
                   },
                 }}
               >
@@ -252,12 +254,7 @@ export const StudentHomepage = ({ setGroup }) => {
           {loading ? (
             <div className="flex items-center justify-center min-h-96">
               <div className="text-center">
-                <l-cardio
-                  size="50"
-                  stroke="4"
-                  speed="2"
-                  color="#10b981"
-                ></l-cardio>
+                <l-cardio size="50" stroke="4" speed="2" color="#10b981"></l-cardio>
                 <Typography className="mt-4 text-gray-600 font-medium">
                   Loading your groups...
                 </Typography>
@@ -266,9 +263,9 @@ export const StudentHomepage = ({ setGroup }) => {
           ) : groups.length === 0 ? (
             <div className="flex items-center justify-center min-h-96">
               <div className="text-center max-w-md">
-                <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-24 h-24 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <svg
-                    className="w-12 h-12 text-emerald-600"
+                    className="w-12 h-12 text-emerald-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -281,10 +278,7 @@ export const StudentHomepage = ({ setGroup }) => {
                     />
                   </svg>
                 </div>
-                <Typography
-                  variant="h5"
-                  className="text-gray-900 font-semibold mb-3"
-                >
+                <Typography variant="h5" className="text-gray-900 font-semibold mb-3">
                   No groups yet
                 </Typography>
                 <Typography

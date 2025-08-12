@@ -10,8 +10,9 @@ import { UserContext } from "../App";
 
 const StudentHeader = () => {
   const [name, setName] = useState("");
-  const [showDashboard, setShowDashboard] = useState(false); // State to control the display of the dashboard text
-  const { isInstructorAsStudent, setIsInstructorAsStudent } = useContext(UserContext);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const { isInstructorAsStudent, setIsInstructorAsStudent } =
+    useContext(UserContext);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,12 +49,9 @@ const StudentHeader = () => {
   }, []);
 
   useEffect(() => {
-    // Introduce a delay before showing the dashboard text
     const timer = setTimeout(() => {
       setShowDashboard(true);
-    }, 0); // Set delay in milliseconds (2000ms = 2 seconds)
-
-    // Clean up the timer when the component unmounts
+    }, 0);
     return () => clearTimeout(timer);
   }, [name]);
 
@@ -68,29 +66,49 @@ const StudentHeader = () => {
       });
   };
 
-  // Button to switch back to instructor mode
   const handleSwitchToInstructor = () => {
     setIsInstructorAsStudent(false);
   };
 
   return (
-    <header className="bg-[#F8F9FD] p-4 flex justify-between items-center max-h-20" style={{ paddingLeft: "15px", paddingRight: "40px" }}>
-      <div className="text-black text-3xl font-roboto font-semibold p-4">
-        {showDashboard && name && `${name}'s Dashboard`} {/* Display the text after the delay */}
+    <header
+      className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm"
+      style={{ paddingLeft: "15px", paddingRight: "40px" }}
+    >
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+          <svg
+            className="w-6 h-6 text-emerald-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 6v6l4 2"
+            />
+          </svg>
+        </div>
+        <div className="text-left">
+          <h1 className="text-xl font-semibold text-gray-900 leading-tight">
+            {showDashboard && name && `${name}'s Dashboard`}
+          </h1>
+          <p className="text-sm text-gray-500">Simulation training hub</p>
+        </div>
       </div>
-      <div className="flex items-center space-x-4">
-        {/* Render this button only if the instructor is viewing as a student */}
+      <div className="flex items-center space-x-3">
         {isInstructorAsStudent && (
           <button
-            className="bg-[#36bd78] text-black px-4 py-2 rounded hover:bg-[#2e9b64]"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
             onClick={handleSwitchToInstructor}
           >
-            Instructor view
+            Instructor View
           </button>
-
         )}
         <button
-          className="bg-gray-800 text-white hover:bg-gray-700 px-4 py-2 rounded"
+          className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200"
           onClick={handleSignOut}
         >
           Sign Out

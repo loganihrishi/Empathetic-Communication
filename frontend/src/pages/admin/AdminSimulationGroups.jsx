@@ -70,7 +70,10 @@ export const AdminSimulationGroups = () => {
         const data = await response.json();
         setRows(getSimulationGroupInfo(data));
       } else {
-        console.error("Failed to fetch simulation groups:", response.statusText);
+        console.error(
+          "Failed to fetch simulation groups:",
+          response.statusText
+        );
       }
     } catch (error) {
       console.error("Error fetching simulation groups:", error);
@@ -125,69 +128,142 @@ export const AdminSimulationGroups = () => {
         sx={{
           width: "100%",
           overflow: "hidden",
-          marginTop: 1,
-          borderRadius: 2,
-          p: 3,
+          mt: 1,
+          borderRadius: 4,
+          p: 4,
           maxHeight: "85vh",
+          backgroundColor: "white",
+          border: "1px solid #e5e7eb",
+          boxShadow:
+            "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
         }}
       >
         <Box
           sx={{
-            padding: 2,
+            pb: 2,
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: "flex-end",
             flexDirection: { xs: "column", sm: "row" },
-            gap: 2,
+            gap: 3,
           }}
         >
-          <Typography color="black" fontStyle="semibold" variant="h6" sx={{ textAlign: { xs: "center", sm: "left" } }}>
-            Simulation Groups
-          </Typography>
+          <Box textAlign={{ xs: "center", sm: "left" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.25rem",
+                color: "#111827",
+                mb: 0.5,
+              }}
+            >
+              Simulation Groups
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+              Manage and monitor active training cohorts
+            </Typography>
+          </Box>
           <Button
             variant="contained"
-            color="primary"
             onClick={handleOpenCreateDialog}
-            sx={{ fontSize: 14 }}
             endIcon={<AddCircleIcon />}
+            sx={{
+              backgroundColor: "#10b981",
+              textTransform: "none",
+              fontWeight: 600,
+              px: 3,
+              py: 1.25,
+              borderRadius: "12px",
+              fontSize: "0.95rem",
+              boxShadow:
+                "0 2px 4px -1px rgba(0,0,0,0.05), 0 4px 10px -1px rgba(0,0,0,0.1)",
+              "&:hover": {
+                backgroundColor: "#059669",
+                boxShadow:
+                  "0 4px 10px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.05)",
+              },
+            }}
           >
             Create Group
           </Button>
         </Box>
         <TableContainer
           sx={{
-            maxHeight: "70vh",
+            maxHeight: "60vh",
             overflowY: "auto",
-            px: { xs: 1, sm: 2 },
+            px: { xs: 0.5, sm: 1 },
           }}
         >
           <TextField
-            label="Search Groups"
+            label="Search groups"
             variant="outlined"
             value={searchQuery}
             onChange={handleSearchChange}
+            placeholder="Filter by name..."
             sx={{
-              my: 1,
+              my: 2,
               width: "100%",
-              maxWidth: 500,
-              mx: "auto",
-              display: "block",
+              maxWidth: 420,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px",
+                backgroundColor: "#f9fafb",
+                "& fieldset": { borderColor: "#e5e7eb" },
+                "&:hover fieldset": { borderColor: "#10b981" },
+                "&.Mui-focused": {
+                  backgroundColor: "white",
+                  boxShadow: "0 0 0 3px rgba(16,185,129,0.15)",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#10b981",
+                  borderWidth: 2,
+                },
+              },
+              "& .MuiInputLabel-root.Mui-focused": { color: "#059669" },
             }}
             InputProps={{ sx: { fontSize: 14 } }}
             InputLabelProps={{ sx: { fontSize: 14 } }}
           />
-          <Table aria-label="simulation group table">
+          <Table aria-label="simulation group table" stickyHeader>
             {!loading ? (
               <>
                 <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: "30%", fontSize: 14 }}>
+                  <TableRow sx={{ backgroundColor: "#f9fafb" }}>
+                    <TableCell
+                      sx={{
+                        width: "35%",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                      }}
+                    >
                       Group Name
                     </TableCell>
-                    <TableCell sx={{ fontSize: 14 }}>
-                      Group Access Code
+                    <TableCell
+                      sx={{
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                      }}
+                    >
+                      Access Code
                     </TableCell>
-                    <TableCell sx={{ fontSize: 14 }}>
+                    <TableCell
+                      sx={{
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                        color: "#374151",
+                        borderBottom: "2px solid #e5e7eb",
+                      }}
+                    >
                       Status
                     </TableCell>
                   </TableRow>
@@ -199,29 +275,70 @@ export const AdminSimulationGroups = () => {
                       <TableRow
                         key={index}
                         onClick={() => handleGroupClick(row)}
-                        sx={{ cursor: "pointer" }}
+                        sx={{
+                          cursor: "pointer",
+                          transition: "background-color .15s, box-shadow .2s",
+                          "&:hover": { backgroundColor: "#f0fdf4" },
+                        }}
                       >
-                        <TableCell sx={{ fontSize: 14 }}>
-                          {row.groupName.toUpperCase()}
+                        <TableCell
+                          sx={{
+                            fontSize: "0.95rem",
+                            color: "#111827",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {row.groupName}
                         </TableCell>
-                        <TableCell sx={{ fontSize: 14 }}>
+                        <TableCell
+                          sx={{
+                            fontSize: "0.85rem",
+                            color: "#4b5563",
+                            fontFamily:
+                              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                          }}
+                        >
                           {row.accessCode}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="contained"
-                            color={row.status === "true" ? "primary" : "secondary"}
-                            sx={{ fontSize: 12, padding: "6px 12px" }}
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "6px 12px",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              letterSpacing: ".05em",
+                              textTransform: "uppercase",
+                              borderRadius: "9999px",
+                              backgroundColor:
+                                row.status === "true" ? "#10b981" : "#d1d5db",
+                              color:
+                                row.status === "true" ? "white" : "#374151",
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                            }}
                           >
                             {row.status === "true" ? "Active" : "Inactive"}
-                          </Button>
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}
                 </TableBody>
               </>
             ) : (
-              <TableBody>loading...</TableBody>
+              <TableBody>
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    sx={{
+                      py: 8,
+                      textAlign: "center",
+                      color: "#6b7280",
+                    }}
+                  >
+                    Loading groups...
+                  </TableCell>
+                </TableRow>
+              </TableBody>
             )}
             <TableFooter>
               <TableRow>
@@ -236,6 +353,14 @@ export const AdminSimulationGroups = () => {
                   sx={{
                     fontSize: 14,
                     minWidth: 400,
+                    ".MuiTablePagination-toolbar": { px: 0 },
+                    ".MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows":
+                      {
+                        fontSize: "0.65rem",
+                        letterSpacing: ".05em",
+                        textTransform: "uppercase",
+                        color: "#6b7280",
+                      },
                   }}
                 />
               </TableRow>
@@ -245,32 +370,49 @@ export const AdminSimulationGroups = () => {
       </Paper>
 
       {/* Dialog for Creating New Simulation Group */}
-      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog} fullWidth maxWidth="md">
-        <DialogTitle>Create New Simulation Group</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={openCreateDialog}
+        onClose={handleCloseCreateDialog}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{ sx: { borderRadius: "20px" } }}
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>
+          Create New Simulation Group
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
           <AdminCreateSimulationGroup
             setSelectedComponent={() => {
               setOpenCreateDialog(false);
-              refreshGroups(); // Refresh groups after adding
+              refreshGroups();
             }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseCreateDialog} color="primary">
+        <DialogActions sx={{ pb: 2, pr: 3 }}>
+          <Button
+            onClick={handleCloseCreateDialog}
+            sx={{ textTransform: "none" }}
+          >
             Cancel
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog for Group Details */}
-      <Dialog open={openDetailsDialog} onClose={handleCloseDetailsDialog} fullWidth maxWidth="md">
-        <DialogContent>
+      <Dialog
+        open={openDetailsDialog}
+        onClose={handleCloseDetailsDialog}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{ sx: { borderRadius: "20px" } }}
+      >
+        <DialogContent sx={{ p: 0 }}>
           {selectedGroup && (
             <GroupDetails
               group={selectedGroup}
               onBack={() => {
                 handleCloseDetailsDialog();
-                refreshGroups(); // Refresh groups after deleting
+                refreshGroups();
               }}
             />
           )}

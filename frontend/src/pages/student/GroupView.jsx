@@ -225,7 +225,7 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
 
   if (loading) {
     return (
-      <div className="bg-[#F8F9FD] w-screen flex justify-center items-center h-screen">
+      <div className="bg-white w-screen flex justify-center items-center h-screen">
         <l-cardio
           size="50" // pulse for loading animation
           stroke="4"
@@ -250,7 +250,7 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
             className="p-2 rounded-lg bg-[rgba(0,0,0,0)] hover:bg-gray-100 transition-colors duration-200"
           >
             <svg
-              className="w-6 h-6 text-gray-600"
+              className="w-5 h-5 text-gray-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -263,7 +263,14 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
               />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Patients</h1>
+          <div className="flex flex-col text-left">
+            <h1 className="text-xl font-semibold text-gray-900 leading-tight">
+              Patients
+            </h1>
+            <p className="text-sm text-gray-500">
+              Select a case to continue training
+            </p>
+          </div>
         </div>
         <button
           onClick={handleSignOut}
@@ -277,9 +284,9 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
         <div className="flex justify-center">
           {data.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-100">
                 <svg
-                  className="w-12 h-12 text-gray-400"
+                  className="w-12 h-12 text-emerald-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -307,7 +314,7 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
                 sx={{
                   borderRadius: "16px",
                   boxShadow:
-                    "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                    "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.05)",
                   border: "1px solid #e5e7eb",
                   overflow: "hidden",
                 }}
@@ -317,44 +324,52 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
                     <TableRow sx={{ backgroundColor: "#f9fafb" }}>
                       <TableCell
                         sx={{
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          letterSpacing: ".05em",
+                          textTransform: "uppercase",
                           color: "#374151",
                           borderBottom: "2px solid #e5e7eb",
-                          py: 3,
+                          py: 2.5,
                         }}
                       >
                         Patient
                       </TableCell>
                       <TableCell
                         sx={{
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          letterSpacing: ".05em",
+                          textTransform: "uppercase",
                           color: "#374151",
                           borderBottom: "2px solid #e5e7eb",
-                          py: 3,
+                          py: 2.5,
                         }}
                       >
                         LLM Evaluation
                       </TableCell>
                       <TableCell
                         sx={{
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          letterSpacing: ".05em",
+                          textTransform: "uppercase",
                           color: "#374151",
                           borderBottom: "2px solid #e5e7eb",
-                          py: 3,
+                          py: 2.5,
                         }}
                       >
                         Instructor Evaluation
                       </TableCell>
                       <TableCell
                         sx={{
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          letterSpacing: ".05em",
+                          textTransform: "uppercase",
                           color: "#374151",
                           borderBottom: "2px solid #e5e7eb",
-                          py: 3,
+                          py: 2.5,
                         }}
                       >
                         Review
@@ -363,76 +378,78 @@ export const GroupView = ({ group, setPatient, setGroup }) => {
                   </TableHead>
                   <TableBody>
                     {data.map((entry, index) => (
-                      <TableRow key={entry.patient_id + index}>
-                        <TableCell sx={{ fontSize: "1rem" }}>
+                      <TableRow
+                        key={entry.patient_id + index}
+                        hover
+                        sx={{ transition: "background-color .15s" }}
+                      >
+                        <TableCell sx={{ fontSize: "0.95rem" }}>
                           <div className="flex flex-row gap-3 items-center">
-                            {/* Display Avatar with profile picture or initial */}
                             <Avatar
                               src={profilePictures[entry.patient_id] || ""}
                               alt={`${titleCase(entry.patient_name)} profile`}
                               sx={{
-                                width: 40,
-                                height: 40,
-                                backgroundColor: "#e0e0e0",
-                                color: "#757575",
-                                fontSize: "0.8rem",
+                                width: 44,
+                                height: 44,
+                                backgroundColor: "#f0fdf4",
+                                color: "#065f46",
+                                fontSize: "0.9rem",
+                                fontWeight: 600,
                               }}
                             >
                               {!profilePictures[entry.patient_id] &&
                                 titleCase(entry.patient_name).charAt(0)}
                             </Avatar>
-                            <div className="flex flex-row items-center gap-1">
-                              <span className="text-base">
+                            <div className="flex flex-col">
+                              <span className="text-gray-900 font-medium">
                                 {titleCase(entry.patient_name)}
+                              </span>
+                              <span className="text-xs text-gray-500 tracking-wide uppercase">
+                                Case #{index + 1}
                               </span>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell sx={{ fontSize: "1rem" }}>
+                        <TableCell sx={{ fontSize: "0.9rem" }}>
                           {entry.llm_completion ? (
                             entry.patient_score === 100 ? (
-                              <span
-                                className="bg-[#2E7D32] text-white text-light rounded px-2 py-2"
-                                style={{ display: "inline-block" }}
-                              >
+                              <span className="bg-emerald-500/90 text-white rounded-lg px-3 py-1 text-sm font-medium inline-block">
                                 Complete
                               </span>
                             ) : (
                               "Incomplete"
                             )
                           ) : (
-                            <span
-                              className="bg-gray-500 text-white text-light rounded px-2 py-2"
-                              style={{ display: "inline-block" }}
-                            >
+                            <span className="bg-gray-400 text-white rounded-lg px-3 py-1 text-sm font-medium inline-block">
                               LLM is not checking
                             </span>
                           )}
                         </TableCell>
-                        <TableCell sx={{ fontSize: "1rem" }}>
+                        <TableCell sx={{ fontSize: "0.9rem" }}>
                           {completionStatuses[entry.patient_name] ? (
-                            <span
-                              className="bg-[#2E7D32] text-white text-light rounded px-2 py-2"
-                              style={{ display: "inline-block" }}
-                            >
+                            <span className="bg-emerald-500/90 text-white rounded-lg px-3 py-1 text-sm font-medium inline-block">
                               Complete
                             </span>
                           ) : (
                             "Incomplete"
                           )}
                         </TableCell>
-                        <TableCell sx={{ fontSize: "1rem" }}>
+                        <TableCell sx={{ fontSize: "0.9rem" }}>
                           <Button
                             variant="contained"
                             onClick={() => enterPatient(entry)}
                             sx={{
                               textTransform: "none",
-                              fontSize: "0.875rem",
+                              fontSize: "0.8rem",
                               backgroundColor: "#10b981",
-                              borderRadius: "8px",
-                              fontWeight: "600",
+                              borderRadius: "10px",
+                              fontWeight: 600,
+                              px: 2.5,
+                              py: 1,
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
                               "&:hover": {
                                 backgroundColor: "#059669",
+                                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
                               },
                             }}
                           >

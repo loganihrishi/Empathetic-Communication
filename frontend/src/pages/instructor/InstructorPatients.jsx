@@ -20,7 +20,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
- } from "@mui/material";
+} from "@mui/material";
 import { fetchAuthSession, fetchUserAttributes } from "aws-amplify/auth";
 import {
   MRT_TableContainer,
@@ -80,7 +80,9 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
       const token = session.tokens.idToken;
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}instructor/ingestion_status?patient_id=${encodeURIComponent(
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }instructor/ingestion_status?patient_id=${encodeURIComponent(
           patientId
         )}&simulation_group_id=${encodeURIComponent(simulation_group_id)}`,
         {
@@ -135,7 +137,9 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
       const token = session.tokens.idToken;
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}instructor/toggle_llm_completion?patient_id=${encodeURIComponent(
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }instructor/toggle_llm_completion?patient_id=${encodeURIComponent(
           patientId
         )}`,
         {
@@ -148,7 +152,10 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
       );
 
       if (!response.ok) {
-        console.error("Failed to update LLM completion status:", response.statusText);
+        console.error(
+          "Failed to update LLM completion status:",
+          response.statusText
+        );
         toast.error("Failed to update LLM completion status");
       }
     } catch (error) {
@@ -166,9 +173,22 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
             <Avatar
               src={profilePictures[row.original.patient_id] || ""}
               alt={cell.getValue()}
-              sx={{ marginRight: 1 }}
+              sx={{
+                marginRight: 1,
+                width: 40,
+                height: 40,
+                bgcolor: "#f0fdf4",
+                color: "#065f46",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+              }}
             />
-            <Typography variant="body1">{titleCase(cell.getValue())}</Typography>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 500, color: "#111827" }}
+            >
+              {titleCase(cell.getValue())}
+            </Typography>
           </Box>
         ),
       },
@@ -188,7 +208,10 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
             <Switch
               checked={row.original.llm_completion ?? false}
               onChange={() =>
-                handleSwitchChange(row.original.patient_id, row.original.llm_completion)
+                handleSwitchChange(
+                  row.original.patient_id,
+                  row.original.llm_completion
+                )
               }
               color="primary"
             />
@@ -201,8 +224,14 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
         Cell: ({ row }) => (
           <Button
             variant="contained"
-            color="primary"
             onClick={() => handleEditClick(row.original)}
+            sx={{
+              backgroundColor: "#10b981",
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: "10px",
+              "&:hover": { backgroundColor: "#059669" },
+            }}
           >
             Edit
           </Button>
@@ -222,29 +251,80 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
                 variant="contained"
                 size="small"
                 onClick={() => handleExpandRow(patientId)}
+                sx={{
+                  backgroundColor: "#10b981",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  "&:hover": { backgroundColor: "#059669" },
+                }}
               >
                 {isExpanded ? "Hide" : "Check"}
               </Button>
               {isExpanded && (
-                <TableContainer component={Paper} sx={{ marginTop: 1 }}>
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    marginTop: 1,
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 4px -1px rgba(0,0,0,0.05)",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
                   <Table size="small">
                     <TableHead>
-                      <TableRow>
-                        <TableCell>File</TableCell>
-                        <TableCell>Status</TableCell>
+                      <TableRow sx={{ backgroundColor: "#f9fafb" }}>
+                        <TableCell
+                          sx={{
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                            letterSpacing: ".05em",
+                            textTransform: "uppercase",
+                            color: "#374151",
+                          }}
+                        >
+                          File
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                            letterSpacing: ".05em",
+                            textTransform: "uppercase",
+                            color: "#374151",
+                          }}
+                        >
+                          Status
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {Object.entries(files).length > 0 ? (
                         Object.entries(files).map(([filename, status]) => (
-                          <TableRow key={filename}>
-                            <TableCell>{filename}</TableCell>
-                            <TableCell>{status}</TableCell>
+                          <TableRow
+                            key={filename}
+                            hover
+                            sx={{ "&:hover": { backgroundColor: "#f0fdf4" } }}
+                          >
+                            <TableCell
+                              sx={{ fontSize: "0.8rem", color: "#111827" }}
+                            >
+                              {filename}
+                            </TableCell>
+                            <TableCell
+                              sx={{ fontSize: "0.8rem", color: "#4b5563" }}
+                            >
+                              {status}
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={2} align="center">
+                          <TableCell
+                            colSpan={2}
+                            align="center"
+                            sx={{ py: 3, color: "#6b7280" }}
+                          >
                             No files found
                           </TableCell>
                         </TableRow>
@@ -290,7 +370,11 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
 
       // Fetch patient list
       const patientResponse = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}instructor/view_patients?simulation_group_id=${encodeURIComponent(simulation_group_id)}`,
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }instructor/view_patients?simulation_group_id=${encodeURIComponent(
+          simulation_group_id
+        )}`,
         {
           method: "GET",
           headers: {
@@ -304,14 +388,20 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
 
       // Fetch profile pictures
       const profileResponse = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}instructor/get_profile_pictures?simulation_group_id=${encodeURIComponent(simulation_group_id)}`,
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }instructor/get_profile_pictures?simulation_group_id=${encodeURIComponent(
+          simulation_group_id
+        )}`,
         {
           method: "POST",
           headers: {
             Authorization: token,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ patient_ids: patientData.map((p) => p.patient_id) }),
+          body: JSON.stringify({
+            patient_ids: patientData.map((p) => p.patient_id),
+          }),
         }
       );
 
@@ -481,7 +571,12 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
           Create New Patient
         </Button>
 
-        <Dialog open={openNewPatientDialog} onClose={handleCloseNewPatientDialog} fullWidth maxWidth="md">
+        <Dialog
+          open={openNewPatientDialog}
+          onClose={handleCloseNewPatientDialog}
+          fullWidth
+          maxWidth="md"
+        >
           <DialogTitle>Create New Patient</DialogTitle>
           <DialogContent style={{ overflow: "hidden" }}>
             <InstructorNewPatient
@@ -499,7 +594,12 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
           </DialogActions> */}
         </Dialog>
 
-        <Dialog open={openEditPatientDialog} onClose={handleCloseEditPatientDialog} fullWidth maxWidth="md">
+        <Dialog
+          open={openEditPatientDialog}
+          onClose={handleCloseEditPatientDialog}
+          fullWidth
+          maxWidth="md"
+        >
           <DialogTitle>Edit Patient</DialogTitle>
           <DialogContent style={{ overflow: "hidden" }}>
             <InstructorEditPatients

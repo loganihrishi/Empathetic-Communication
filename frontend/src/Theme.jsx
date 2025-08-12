@@ -3,8 +3,8 @@ import { createTheme } from "@mui/material/styles";
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#36bd78", // OLD: #5536DA 
-      // contrastText: "#ffffff",
+      main: "#36bd78", // OLD: #5536DA
+      contrastText: "#ffffff", // white text on primary (green) buttons
     },
     secondary: {
       main: "#BDBDBD",
@@ -25,6 +25,15 @@ const theme = createTheme({
     fontFamily: "Roboto, sans-serif",
     h1: {
       fontSize: "2rem",
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        containedPrimary: {
+          color: "#ffffff", // ensure white text for primary contained buttons
+        },
+      },
     },
   },
 });

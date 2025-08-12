@@ -3,9 +3,7 @@ import { useState } from "react";
 // logo
 import heartbeatImage from "../assets/heartbeat.png";
 
-
-import './LoginStyles.css'; // Adjust the path if necessary
-
+import "./LoginStyles.css"; // Adjust the path if necessary
 
 // amplify
 import {
@@ -68,7 +66,6 @@ export const Login = () => {
   const [step, setStep] = useState("requestReset");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
 
   const verifyJwtToken = async (token) => {
     try {
@@ -162,25 +159,33 @@ export const Login = () => {
 
     if (password.length < 8) {
       setPasswordError("Password must be at least 8 characters long");
-      toast.error("Password must be at least 8 characters long", { theme: "colored" });
+      toast.error("Password must be at least 8 characters long", {
+        theme: "colored",
+      });
       return;
     }
 
     if (!/[a-z]/.test(password)) {
       setPasswordError("Password must contain at least one lowercase letter");
-      toast.error("Password must contain at least one lowercase letter", { theme: "colored" });
+      toast.error("Password must contain at least one lowercase letter", {
+        theme: "colored",
+      });
       return;
     }
 
     if (!/[A-Z]/.test(password)) {
       setPasswordError("Password must contain at least one uppercase letter");
-      toast.error("Password must contain at least one uppercase letter", { theme: "colored" });
+      toast.error("Password must contain at least one uppercase letter", {
+        theme: "colored",
+      });
       return;
     }
 
     if (!/[0-9]/.test(password)) {
       setPasswordError("Password must contain at least one number");
-      toast.error("Password must contain at least one number", { theme: "colored" });
+      toast.error("Password must contain at least one number", {
+        theme: "colored",
+      });
       return;
     }
 
@@ -203,15 +208,17 @@ export const Login = () => {
       setNewSignUp(false);
       if (!isSignUpComplete && nextStep?.signUpStep === "CONFIRM_SIGN_UP") {
         setSignUpConfirmation(true); // Transition to confirmation UI
-        toast.success("Account created. Check your email for the confirmation code.", {
-          theme: "colored",
-        });
+        toast.success(
+          "Account created. Check your email for the confirmation code.",
+          {
+            theme: "colored",
+          }
+        );
       }
     } catch (error) {
-      const errorMessage =
-        error.message.includes("PreSignUp failed with error")
-          ? "Your email domain is not allowed. Please use a valid email address."
-          : `Error signing up: ${error.message}`;
+      const errorMessage = error.message.includes("PreSignUp failed with error")
+        ? "Your email domain is not allowed. Please use a valid email address."
+        : `Error signing up: ${error.message}`;
       toast.error(errorMessage, {
         position: "top-center",
         autoClose: 3000,
@@ -224,8 +231,6 @@ export const Login = () => {
       setLoading(false);
     }
   };
-
-
 
   // user gets new password
   const handleNewUserPassword = async (event) => {
@@ -303,10 +308,11 @@ export const Login = () => {
       if (user.isSignedIn) {
         // Send user data to backend
         const session = await fetchAuthSession();
-        const token = session.tokens.idToken
+        const token = session.tokens.idToken;
 
         const response = await fetch(
-          `${import.meta.env.VITE_API_ENDPOINT
+          `${
+            import.meta.env.VITE_API_ENDPOINT
           }student/create_user?user_email=${encodeURIComponent(
             username
           )}&username=${encodeURIComponent(
@@ -448,7 +454,11 @@ export const Login = () => {
   return (
     <ThemeProvider theme={theme}>
       <PageContainer>
-        <Grid container component="main" sx={{ height: "100vh", bgcolor: "#f8fafc" }}>
+        <Grid
+          container
+          component="main"
+          sx={{ height: "100vh", bgcolor: "#ffffff" }}
+        >
           <CssBaseline />
           <Grid
             item
@@ -460,7 +470,8 @@ export const Login = () => {
               alignItems: "center",
               justifyContent: "center",
               padding: "40px",
-              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              background:
+                "linear-gradient(135deg, #D1FAE5, #e3fcef 0%, #D1FAE5 100%)",
               position: "relative",
               overflow: "hidden",
               "&::before": {
@@ -470,68 +481,77 @@ export const Login = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: "url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grain\" width=\"100\" height=\"100\" patternUnits=\"userSpaceOnUse\"><circle cx=\"50\" cy=\"50\" r=\"1\" fill=\"%23ffffff\" opacity=\"0.1\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grain)\"/></svg>') repeat",
+                background:
+                  "radial-gradient(circle at 25% 25%, rgba(255,255,255,0.15), transparent 60%), radial-gradient(circle at 75% 75%, rgba(255,255,255,0.15), transparent 60%)",
                 pointerEvents: "none",
               },
             }}
           >
-
-
-            <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+            <div
+              style={{
+                textAlign: "center",
+                position: "relative",
+                display: "flex",
+                flexDirection: "row",
+                textAlign: "left",
+                zIndex: 1,
+                maxWidth: "80%",
+              }}
+            >
               <img
-                src={heartbeatImage}
+                src={"logo.png"}
                 alt="Heartbeat"
-                className='heartbeat-image'
+                className="heartbeat-image"
                 style={{
-                  maxWidth: '35%',
-                  display: 'block',
-                  height: 'auto',
-                  margin: '0 auto 20px',
-                  animation: 'float 3s ease-in-out infinite',
+                  maxWidth: "20%",
+                  display: "block",
+                  height: "auto",
+                  margin: "0 auto 0px",
                 }}
               />
-              <Typography
-                variant="h3"
-                sx={{
-                  color: 'white',
-                  fontWeight: '700',
-                  fontSize: 'clamp(1.75rem, 3.5vw, 3rem)',
-                  lineHeight: '1.1',
-                  marginBottom: '12px',
-                  textAlign: 'center',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              <div
+                style={{
+                  maxWidth: "80%",
+                  margin: "0 auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  textAlign: "left",
+                  justifyContent: "center",
+                  alignItems: "flex-start",
                 }}
               >
-                Welcome to
-              </Typography>
-              <Typography
-                variant="h4"
-                sx={{
-                  color: 'rgba(255,255,255,0.95)',
-                  fontWeight: '600',
-                  fontSize: 'clamp(1.25rem, 2.5vw, 2rem)',
-                  lineHeight: '1.2',
-                  marginBottom: '8px',
-                  textAlign: 'center',
-                }}
-              >
-                Virtual Care Interactions
-              </Typography>
-              <Typography
-                variant="h5"
-                sx={{
-                  color: 'rgba(255,255,255,0.9)',
-                  fontWeight: '500',
-                  fontSize: 'clamp(1rem, 2vw, 1.5rem)',
-                  lineHeight: '1.3',
-                  textAlign: 'center',
-                }}
-              >
-                Powered by AI
-              </Typography>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: "550",
+                    fontSize: "clamp(1.75rem, 3.5vw, 3rem)",
+                    lineHeight: "1.1",
+                    marginBottom: "12px",
+                    textAlign: "left",
+                    fontFamily: "Outfit, sans-serif",
+                    fontSize: "3rem",
+                  }}
+                >
+                  Virtual Care Interactions
+                </Typography>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: "500",
+                    fontSize: "clamp(1.25rem, 2.5vw, 2rem)",
+                    lineHeight: "1.2",
+                    marginBottom: "8px",
+                    textAlign: "left",
+                    fontFamily: "Outfit, sans-serif",
+                    fontSize: "1.5rem",
+                  }}
+                >
+                  With Empathetic Communication
+                </Typography>
+              </div>
             </div>
-
-
           </Grid>
 
           {/* existing user sign in */}
@@ -552,7 +572,8 @@ export const Login = () => {
                   height: "100%",
                   bgcolor: "white",
                   borderRadius: { sm: "20px 0 0 20px" },
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                  boxShadow:
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 <Box
@@ -566,14 +587,15 @@ export const Login = () => {
                     maxWidth: "400px",
                   }}
                 >
-                  <Typography 
-                    component="h1" 
+                  <Typography
+                    component="h1"
                     variant="h4"
                     sx={{
                       color: "#1f2937",
                       fontWeight: "700",
                       marginBottom: "32px",
                       fontSize: "1.875rem",
+                      fontFamily: "Outfit, sans-serif",
                     }}
                   >
                     Sign in
@@ -676,8 +698,8 @@ export const Login = () => {
                       type="submit"
                       fullWidth
                       variant="contained"
-                      sx={{ 
-                        mt: 2, 
+                      sx={{
+                        mt: 2,
                         mb: 3,
                         py: 1.5,
                         borderRadius: "12px",
@@ -685,12 +707,14 @@ export const Login = () => {
                         fontSize: "1rem",
                         fontWeight: "600",
                         textTransform: "none",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                        boxShadow: "none",
                         transition: "all 0.2s ease-in-out",
+                        color: "white",
+                        fontFamily: "Outfit, sans-serif",
                         "&:hover": {
                           backgroundColor: "#059669",
-                          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                           transform: "translateY(-1px)",
+                          boxShadow: "none",
                         },
                         "&:active": {
                           transform: "translateY(0)",
@@ -756,7 +780,8 @@ export const Login = () => {
                 height: "100%",
                 bgcolor: "white",
                 borderRadius: { sm: "20px 0 0 20px" },
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                boxShadow:
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               }}
             >
               <Box
@@ -770,9 +795,9 @@ export const Login = () => {
                   maxWidth: "500px",
                 }}
               >
-                <Typography 
-                  component="h1" 
-                  variant="h4" 
+                <Typography
+                  component="h1"
+                  variant="h4"
                   sx={{
                     color: "#1f2937",
                     fontWeight: "700",
@@ -1018,16 +1043,16 @@ export const Login = () => {
                       lineHeight: "1.5",
                     }}
                   >
-                    Providing personal information is optional and entirely at your
-                    discretion. You can use this app without sharing any personal
-                    details beyond those necessary for account setup.
+                    Providing personal information is optional and entirely at
+                    your discretion. You can use this app without sharing any
+                    personal details beyond those necessary for account setup.
                   </Typography>
                   <Button
                     fullWidth
                     variant="contained"
                     onClick={handleSignUp}
-                    sx={{ 
-                      mt: 2, 
+                    sx={{
+                      mt: 2,
                       mb: 3,
                       py: 1.5,
                       borderRadius: "12px",
@@ -1035,11 +1060,13 @@ export const Login = () => {
                       fontSize: "1rem",
                       fontWeight: "600",
                       textTransform: "none",
-                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                      boxShadow:
+                        "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
                       transition: "all 0.2s ease-in-out",
                       "&:hover": {
                         backgroundColor: "#059669",
-                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                        boxShadow:
+                          "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                         transform: "translateY(-1px)",
                       },
                       "&:active": {
@@ -1137,7 +1164,6 @@ export const Login = () => {
                 alignItems: "center",
                 margin: "0 auto", // Center the content horizontally
                 justifyContent: "center", // Center the content vertically
-
               }}
             >
               <Typography component="h1" variant="h5" paddingBottom={3}>
@@ -1258,7 +1284,11 @@ export const Login = () => {
 
                 {/* Confirm Reset */}
                 {step === "confirmReset" && (
-                  <Box component="form" noValidate onSubmit={handleConfirmResetPassword}>
+                  <Box
+                    component="form"
+                    noValidate
+                    onSubmit={handleConfirmResetPassword}
+                  >
                     <TextField
                       label="Confirmation Code"
                       value={confirmationCode}
