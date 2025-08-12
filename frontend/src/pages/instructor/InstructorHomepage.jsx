@@ -231,7 +231,10 @@ const InstructorHomepage = () => {
           <PageContainer>
             <AppBar
               position="fixed"
-              sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+              sx={{
+                boxShadow: "none",
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+              }}
               elevation={1}
             >
               <InstructorHeader />
@@ -244,6 +247,7 @@ const InstructorHomepage = () => {
                 marginTop: 1,
                 overflowY: "auto",
                 maxHeight: "calc(100vh - 64px)",
+                backgroundColor: "#ffffff",
               }}
             >
               <Toolbar />
@@ -252,14 +256,26 @@ const InstructorHomepage = () => {
                 fontStyle="semibold"
                 textAlign="left"
                 variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  mb: 2,
+                  color: "#111827",
+                }}
               >
                 Simulation Groups
               </Typography>
               <Paper
                 sx={{
-                  width: "80%",
+                  width: "100%",
+                  maxWidth: "1000px",
                   margin: "0 auto",
-                  padding: 2,
+                  p: 3,
+                  borderRadius: "16px",
+                  backgroundColor: "white",
+                  border: "1px solid #e5e7eb",
+                  boxShadow:
+                    "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.05)",
+                  overflow: "hidden",
                 }}
               >
                 <TextField
@@ -267,19 +283,71 @@ const InstructorHomepage = () => {
                   variant="outlined"
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  sx={{ width: "100%", marginBottom: 2 }}
+                  sx={{
+                    width: "100%",
+                    mb: 2,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "12px",
+                      backgroundColor: "#f9fafb",
+                      transition: "all .2s",
+                      "& fieldset": { borderColor: "#e5e7eb" },
+                      "&:hover fieldset": { borderColor: "#10b981" },
+                      "&.Mui-focused": {
+                        backgroundColor: "white",
+                        boxShadow: "0 0 0 3px rgba(16,185,129,0.15)",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#10b981",
+                        borderWidth: "2px",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      color: "#6b7280",
+                      "&.Mui-focused": { color: "#059669" },
+                    },
+                  }}
                 />
-                <TableContainer>
-                  <Table aria-label="group table">
+                <TableContainer sx={{ maxHeight: "55vh", overflowY: "auto" }}>
+                  <Table aria-label="group table" stickyHeader>
                     <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ width: "60%", padding: "16px" }}>
+                      <TableRow sx={{ backgroundColor: "#f9fafb" }}>
+                        <TableCell
+                          sx={{
+                            width: "40%",
+                            fontSize: ".7rem",
+                            fontWeight: 600,
+                            letterSpacing: ".05em",
+                            textTransform: "uppercase",
+                            color: "#374151",
+                            borderBottom: "2px solid #e5e7eb",
+                          }}
+                        >
                           Group
                         </TableCell>
-                        <TableCell sx={{ width: "40%", padding: "16px" }}>
+                        <TableCell
+                          sx={{
+                            width: "40%",
+                            fontSize: ".7rem",
+                            fontWeight: 600,
+                            letterSpacing: ".05em",
+                            textTransform: "uppercase",
+                            color: "#374151",
+                            borderBottom: "2px solid #e5e7eb",
+                          }}
+                        >
                           Description
                         </TableCell>
-                        <TableCell sx={{ width: "20%", padding: "16px" }}>
+                        <TableCell
+                          sx={{
+                            width: "20%",
+                            fontSize: ".7rem",
+                            fontWeight: 600,
+                            letterSpacing: ".05em",
+                            textTransform: "uppercase",
+                            color: "#374151",
+                            borderBottom: "2px solid #e5e7eb",
+                          }}
+                        >
                           Status
                         </TableCell>
                       </TableRow>
@@ -294,38 +362,64 @@ const InstructorHomepage = () => {
                           <TableRow
                             key={index}
                             onClick={() => handleRowClick(row.group, row.id)}
-                            style={{
+                            sx={{
                               cursor: "pointer",
-                              transition: "background-color 0.3s",
+                              transition: "background-color .15s",
+                              "&:hover": { backgroundColor: "#f0fdf4" },
                             }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#f5f5f5")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "white")
-                            }
                           >
-                            <TableCell sx={{ padding: "16px" }}>
+                            <TableCell
+                              sx={{ fontSize: ".95rem", color: "#111827" }}
+                            >
                               {titleCase(row.group)}
                             </TableCell>
-                            <TableCell sx={{ padding: "16px" }}>
+                            <TableCell
+                              sx={{ fontSize: ".85rem", color: "#4b5563" }}
+                            >
                               {row.description}
                             </TableCell>
-                            <TableCell sx={{ padding: "16px" }}>
-                              <Button
-                                variant="contained"
-                                color={
-                                  row.status === "Active"
-                                    ? "primary"
-                                    : "secondary"
-                                }
+                            <TableCell>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px 10px",
+                                  borderRadius: "9999px",
+                                  fontSize: ".65rem",
+                                  fontWeight: 600,
+                                  letterSpacing: ".05em",
+                                  textTransform: "uppercase",
+                                  backgroundColor:
+                                    row.status === "Active"
+                                      ? "#d1fae5"
+                                      : "#f3f4f6",
+                                  color:
+                                    row.status === "Active"
+                                      ? "#065f46"
+                                      : "#374151",
+                                  border:
+                                    row.status === "Active"
+                                      ? "1px solid #a7f3d0"
+                                      : "1px solid #e5e7eb",
+                                }}
                               >
                                 {row.status}
-                              </Button>
+                              </span>
                             </TableCell>
                           </TableRow>
                         ))}
+                      {filteredRows.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={3}
+                            align="center"
+                            sx={{ py: 6, color: "#6b7280" }}
+                          >
+                            No simulation groups found
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                     <TableFooter>
                       <TableRow>
@@ -337,6 +431,16 @@ const InstructorHomepage = () => {
                           page={page}
                           onPageChange={handleChangePage}
                           onRowsPerPageChange={handleChangeRowsPerPage}
+                          sx={{
+                            ".MuiTablePagination-toolbar": { px: 0 },
+                            ".MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows":
+                              {
+                                fontSize: ".65rem",
+                                letterSpacing: ".05em",
+                                textTransform: "uppercase",
+                                color: "#6b7280",
+                              },
+                          }}
                         />
                       </TableRow>
                     </TableFooter>
