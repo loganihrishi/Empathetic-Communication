@@ -497,6 +497,7 @@ export const Login = () => {
                 zIndex: 1,
                 maxWidth: "80%",
               }}
+              className="fadeInLeft"
             >
               <img
                 src={"logo.png"}
@@ -532,6 +533,7 @@ export const Login = () => {
                     fontFamily: "Outfit, sans-serif",
                     fontSize: "3rem",
                   }}
+                  className="fadeInLeft"
                 >
                   Virtual Care Interactions
                 </Typography>
@@ -547,6 +549,7 @@ export const Login = () => {
                     fontFamily: "Outfit, sans-serif",
                     fontSize: "1.5rem",
                   }}
+                  className="fadeInLeftDelay"
                 >
                   With Empathetic Communication
                 </Typography>
