@@ -77,25 +77,25 @@ const StudentHeader = () => {
     >
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+          {/* Person icon (head & shoulders) */}
           <svg
             className="w-6 h-6 text-emerald-600"
+            viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            viewBox="0 0 24 24"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 6v6l4 2"
-            />
+            <circle cx="12" cy="8" r="3" />
+            <path d="M6 20v-1a6 6 0 0 1 12 0v1" />
           </svg>
         </div>
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900 leading-tight">
             {showDashboard && name && `${name}'s Dashboard`}
           </h1>
-          <p className="text-sm text-gray-500">Simulation training hub</p>
+          <p className="text-sm text-gray-500">Simulation group view</p>
         </div>
       </div>
       <div className="flex items-center space-x-3">
