@@ -503,6 +503,82 @@ exports.handler = async (event) => {
         }
         break;
 
+      case "GET /admin/system_prompts":
+        try {
+          // Get the latest system prompt from history table
+          const latestPrompt = await sqlConnectionTableCreator`
+            SELECT prompt_content, created_at, created_by
+            FROM "system_prompt_history"
+            ORDER BY created_at DESC
+            LIMIT 1;
+          `;
+
+          // Get prompt history excluding the latest one
+          const promptHistory = await sqlConnectionTableCreator`
+            SELECT history_id, prompt_content, created_at, created_by, is_active
+            FROM "system_prompt_history"
+            ORDER BY created_at DESC
+            OFFSET 1;
+          `;
+
+          response.body = JSON.stringify({
+            current_prompt: latestPrompt[0]?.prompt_content || "",
+            history: promptHistory
+          });
+        } catch (err) {
+          response.statusCode = 500;
+          console.log(err);
+          response.body = JSON.stringify({ error: "Internal server error" });
+        }
+        break;
+      case "POST /admin/update_system_prompt":
+        if (event.body) {
+          try {
+            const { prompt_content, created_by } = JSON.parse(event.body);
+
+            // Insert new prompt into history
+            await sqlConnectionTableCreator`
+              INSERT INTO "system_prompt_history" (prompt_content, created_by, is_active)
+              VALUES (${prompt_content}, ${created_by || 'admin'}, true);
+            `;
+
+            response.body = JSON.stringify({
+              message: "System prompt updated successfully"
+            });
+          } catch (err) {
+            response.statusCode = 500;
+            console.log(err);
+            response.body = JSON.stringify({ error: "Internal server error" });
+          }
+        } else {
+          response.statusCode = 400;
+          response.body = "prompt_content is required";
+        }
+        break;
+      case "POST /admin/restore_system_prompt":
+        if (event.body) {
+          try {
+            const { prompt_content, created_by } = JSON.parse(event.body);
+
+            // Insert the prompt as new active prompt
+            await sqlConnectionTableCreator`
+              INSERT INTO "system_prompt_history" (prompt_content, created_by, is_active)
+              VALUES (${prompt_content}, ${created_by || 'admin'}, true);
+            `;
+
+            response.body = JSON.stringify({
+              message: "System prompt restored successfully"
+            });
+          } catch (err) {
+            response.statusCode = 500;
+            console.log(err);
+            response.body = JSON.stringify({ error: "Internal server error" });
+          }
+        } else {
+          response.statusCode = 400;
+          response.body = "prompt_content is required";
+        }
+        break;
       default:
         throw new Error(`Unsupported route: "${pathData}"`);
     }
