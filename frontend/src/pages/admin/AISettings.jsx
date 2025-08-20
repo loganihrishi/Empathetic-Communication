@@ -17,6 +17,11 @@ import {
   IconButton,
   Alert,
   Toolbar,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import {
   Save as SaveIcon,
@@ -24,6 +29,8 @@ import {
   Settings as SettingsIcon,
   ArrowBackIosNew as ArrowBackIosNewIcon,
   ArrowForwardIos as ArrowForwardIosIcon,
+  Warning as WarningIcon,
+  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import { useAuthentication } from "../../functions/useAuth";
 import { fetchAuthSession } from "aws-amplify/auth";
@@ -42,6 +49,8 @@ const AISettings = () => {
     severity: "info",
   });
   const [authToken, setAuthToken] = useState(null);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const DEFAULT_PROMPT = "CHANGE ME";
 
   useEffect(() => {
     const getAuthToken = async () => {
@@ -213,6 +222,20 @@ const AISettings = () => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const loadDefaultPrompt = () => {
+    setSystemPrompt(DEFAULT_PROMPT);
+    setOpenConfirmDialog(false);
+    showAlert("Default prompt loaded", "success");
+  };
+
+  const handleDefaultPromptClick = () => {
+    if (systemPrompt && systemPrompt.trim() !== "") {
+      setOpenConfirmDialog(true);
+    } else {
+      loadDefaultPrompt();
+    }
   };
 
   const hasHistory = promptHistory.length > 0;
@@ -405,35 +428,65 @@ const AISettings = () => {
               },
             }}
           />
-          <Button
-            startIcon={<SaveIcon />}
-            onClick={updateSystemPrompt}
-            disabled={loading || !systemPrompt.trim()}
-            variant="contained"
-            sx={{
-              backgroundColor: "#10b981",
-              "&:hover": {
-                backgroundColor: "#059669",
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <Button
+              startIcon={<ResetIcon />}
+              onClick={handleDefaultPromptClick}
+              disabled={loading}
+              variant="outlined"
+              sx={{
+                borderColor: "#10b981",
+                color: "#10b981",
+                "&:hover": {
+                  borderColor: "#059669",
+                  backgroundColor: "rgba(16, 185, 129, 0.04)",
+                  transform: "translateY(-1px)",
+                },
+                "&:active": {
+                  transform: "translateY(0)",
+                },
+                "&:disabled": {
+                  borderColor: "#d1d5db",
+                  color: "#d1d5db",
+                },
+                transition: "all 0.2s ease-in-out",
+                borderRadius: "8px",
+                fontWeight: 600,
+                textTransform: "none",
+              }}
+            >
+              Load Default Prompt
+            </Button>
+            <Button
+              startIcon={<SaveIcon />}
+              onClick={updateSystemPrompt}
+              disabled={loading || !systemPrompt.trim()}
+              variant="contained"
+              sx={{
+                backgroundColor: "#10b981",
+                "&:hover": {
+                  backgroundColor: "#059669",
+                  boxShadow:
+                    "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                  transform: "translateY(-1px)",
+                },
+                "&:active": {
+                  transform: "translateY(0)",
+                },
+                "&:disabled": {
+                  backgroundColor: "#d1d5db",
+                },
+                transition: "all 0.2s ease-in-out",
+                borderRadius: "8px",
+                fontWeight: 600,
+                textTransform: "none",
                 boxShadow:
-                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                transform: "translateY(-1px)",
-              },
-              "&:active": {
-                transform: "translateY(0)",
-              },
-              "&:disabled": {
-                backgroundColor: "#d1d5db",
-              },
-              transition: "all 0.2s ease-in-out",
-              borderRadius: "8px",
-              fontWeight: 600,
-              textTransform: "none",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            }}
-          >
-            {loading ? "Saving..." : "Save System Prompt"}
-          </Button>
+                  "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              }}
+            >
+              {loading ? "Saving..." : "Save System Prompt"}
+            </Button>
+          </Box>
         </CardContent>
       </Card>
 
@@ -570,6 +623,70 @@ const AISettings = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog for Default Prompt */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+        PaperProps={{
+          sx: {
+            borderRadius: "12px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          },
+        }}
+      >
+        <DialogTitle
+          id="alert-dialog-title"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            color: "#f59e0b",
+          }}
+        >
+          <WarningIcon sx={{ fontSize: 28 }} />
+          {"Confirm Loading Default Prompt"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure? Using the default prompt will discard any unsaved
+            changes.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ padding: 2 }}>
+          <Button
+            onClick={() => setOpenConfirmDialog(false)}
+            sx={{
+              color: "#6b7280",
+              fontWeight: 500,
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "#f3f4f6",
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={loadDefaultPrompt}
+            variant="contained"
+            sx={{
+              backgroundColor: "#10b981",
+              "&:hover": {
+                backgroundColor: "#059669",
+              },
+              fontWeight: 600,
+              textTransform: "none",
+              borderRadius: "8px",
+            }}
+            autoFocus
+          >
+            Load Default
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
