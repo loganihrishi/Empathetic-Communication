@@ -362,7 +362,9 @@ const AISettings = () => {
                 <IconButton
                   aria-label="next prompt"
                   onClick={() =>
-                    setHistoryIndex((p) => Math.min(promptHistory.length - 1, p + 1))
+                    setHistoryIndex((p) =>
+                      Math.min(promptHistory.length - 1, p + 1)
+                    )
                   }
                   disabled={historyIndex >= promptHistory.length - 1}
                 >
@@ -376,7 +378,14 @@ const AISettings = () => {
             <Typography color="textSecondary">No history available</Typography>
           ) : (
             <Box sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 1 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
                 <Typography variant="subtitle2">
                   {formatDate(currentPrompt.created_at)}
                 </Typography>
