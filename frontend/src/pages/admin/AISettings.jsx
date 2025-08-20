@@ -306,12 +306,18 @@ const AISettings = () => {
           <TextField
             fullWidth
             multiline
-            rows={12}
+            minRows={4}
+            maxRows={100}
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             placeholder="Enter the system prompt for the AI..."
             variant="outlined"
             sx={{ mb: 2 }}
+            InputProps={{
+              sx: {
+                overflow: "hidden", // Prevents scrollbars
+              },
+            }}
           />
           <Button
             startIcon={<SaveIcon />}
@@ -410,9 +416,15 @@ const AISettings = () => {
               <TextField
                 fullWidth
                 multiline
-                rows={6}
+                minRows={4}
+                maxRows={100}
                 value={currentPrompt.prompt_content}
-                InputProps={{ readOnly: true }}
+                InputProps={{ 
+                  readOnly: true,
+                  sx: {
+                    overflow: "hidden", // Prevents scrollbars
+                  }
+                }}
                 variant="outlined"
               />
             </Box>
