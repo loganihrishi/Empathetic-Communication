@@ -502,12 +502,11 @@ exports.handler = async (event) => {
           });
         }
         break;
-
       case "GET /admin/system_prompts":
         try {
           // Get the latest system prompt from history table
           const latestPrompt = await sqlConnectionTableCreator`
-            SELECT prompt_content, created_at, created_by
+            SELECT prompt_content, created_at
             FROM "system_prompt_history"
             ORDER BY created_at DESC
             LIMIT 1;
@@ -515,7 +514,7 @@ exports.handler = async (event) => {
 
           // Get prompt history excluding the latest one
           const promptHistory = await sqlConnectionTableCreator`
-            SELECT history_id, prompt_content, created_at, created_by, is_active
+            SELECT history_id, prompt_content, created_at
             FROM "system_prompt_history"
             ORDER BY created_at DESC
             OFFSET 1;
@@ -534,12 +533,17 @@ exports.handler = async (event) => {
       case "POST /admin/update_system_prompt":
         if (event.body) {
           try {
-            const { prompt_content, created_by } = JSON.parse(event.body);
+            const { prompt_content } = JSON.parse(event.body);
+            if (!prompt_content || !prompt_content.trim()) {
+              response.statusCode = 400;
+              response.body = "prompt_content is required";
+              break;
+            }
 
-            // Insert new prompt into history
+            // Insert new prompt into history (created_by removed)
             await sqlConnectionTableCreator`
-              INSERT INTO "system_prompt_history" (prompt_content, created_by, is_active)
-              VALUES (${prompt_content}, ${created_by || 'admin'}, true);
+              INSERT INTO "system_prompt_history" (prompt_content)
+              VALUES (${prompt_content});
             `;
 
             response.body = JSON.stringify({
@@ -556,27 +560,64 @@ exports.handler = async (event) => {
         }
         break;
       case "POST /admin/restore_system_prompt":
-        if (event.body) {
-          try {
-            const { prompt_content, created_by } = JSON.parse(event.body);
+        try {
+          // Prefer query param history_id; fallback to body with prompt_content for backward compatibility
+          const historyId = event.queryStringParameters && event.queryStringParameters.history_id
+            ? event.queryStringParameters.history_id
+            : null;
 
-            // Insert the prompt as new active prompt
+          if (historyId) {
+            // Fetch the prompt_content for the given history_id and insert as new active prompt
+            const rows = await sqlConnectionTableCreator`
+              SELECT prompt_content
+              FROM "system_prompt_history"
+              WHERE history_id = ${historyId}
+              LIMIT 1;
+            `;
+
+            const fromHistory = rows[0]?.prompt_content;
+            if (!fromHistory) {
+              response.statusCode = 404;
+              response.body = JSON.stringify({ error: "History entry not found" });
+              break;
+            }
+
             await sqlConnectionTableCreator`
-              INSERT INTO "system_prompt_history" (prompt_content, created_by, is_active)
-              VALUES (${prompt_content}, ${created_by || 'admin'}, true);
+              INSERT INTO "system_prompt_history" (prompt_content)
+              VALUES (${fromHistory});
             `;
 
             response.body = JSON.stringify({
               message: "System prompt restored successfully"
             });
-          } catch (err) {
-            response.statusCode = 500;
-            console.log(err);
-            response.body = JSON.stringify({ error: "Internal server error" });
+            break;
           }
-        } else {
-          response.statusCode = 400;
-          response.body = "prompt_content is required";
+
+          // Fallback: body-based restore (no created_by)
+          if (event.body) {
+            const { prompt_content } = JSON.parse(event.body);
+            if (!prompt_content || !prompt_content.trim()) {
+              response.statusCode = 400;
+              response.body = "prompt_content is required";
+              break;
+            }
+
+            await sqlConnectionTableCreator`
+              INSERT INTO "system_prompt_history" (prompt_content)
+              VALUES (${prompt_content});
+            `;
+
+            response.body = JSON.stringify({
+              message: "System prompt restored successfully"
+            });
+          } else {
+            response.statusCode = 400;
+            response.body = "history_id or prompt_content is required";
+          }
+        } catch (err) {
+          response.statusCode = 500;
+          console.log(err);
+          response.body = JSON.stringify({ error: "Internal server error" });
         }
         break;
       default:

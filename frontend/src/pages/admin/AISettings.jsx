@@ -15,69 +15,115 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Alert,
-  Chip,
 } from "@mui/material";
 import {
   Save as SaveIcon,
-  History as HistoryIcon,
   Restore as RestoreIcon,
   Settings as SettingsIcon,
+  ArrowBackIosNew as ArrowBackIosNewIcon,
+  ArrowForwardIos as ArrowForwardIosIcon,
 } from "@mui/icons-material";
 import { useAuthentication } from "../../functions/useAuth";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 const AISettings = () => {
   const { user } = useAuthentication();
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [groups, setGroups] = useState([]);
   const [messageLimit, setMessageLimit] = useState(50);
   const [noLimit, setNoLimit] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [promptHistory, setPromptHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [alert, setAlert] = useState({ show: false, message: "", severity: "info" });
+  const [historyPage, setHistoryPage] = useState(0);
+  const PAGE_SIZE = 5;
+  const [alert, setAlert] = useState({
+    show: false,
+    message: "",
+    severity: "info",
+  });
+  const [authToken, setAuthToken] = useState(null);
 
   useEffect(() => {
-    fetchGroups();
-  }, []);
-
-  useEffect(() => {
-    fetchSystemPrompts();
-  }, []);
-
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}/admin/simulation_groups`,
-        {
-          headers: {
-            Authorization: `Bearer ${user.signInUserSession.idToken.jwtToken}`,
-          },
+    const getAuthToken = async () => {
+      try {
+        const session = await fetchAuthSession();
+        if (session.tokens?.idToken) {
+          setAuthToken(session.tokens.idToken.toString());
         }
-      );
-      const data = await response.json();
-      setGroups(data);
-      if (data.length > 0) {
-        setSelectedGroup(data[0].simulation_group_id);
+      } catch (error) {
+        console.error("Error getting auth token:", error);
       }
-    } catch (error) {
-      showAlert("Failed to fetch simulation groups", "error");
+    };
+
+    if (user) {
+      getAuthToken();
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (authToken) {
+      fetchSystemPrompts();
+    }
+  }, [authToken]);
+
+  useEffect(() => {
+    setHistoryPage(0);
+  }, [promptHistory.length]);
+
+  if (!user) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          mt: 8,
+          ml: { xs: 0, md: "224px" },
+          width: { xs: "100%", md: "calc(100% - 224px)" },
+          maxWidth: "100%",
+          boxSizing: "border-box",
+          flexGrow: 1,
+          minWidth: 0,
+          height: "calc(100vh - 64px)",
+          overflowY: "auto",
+          pb: 6,
+        }}
+      >
+        <Typography>Loading user authentication...</Typography>
+      </Box>
+    );
+  }
+
+  if (!authToken) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          mt: 8,
+          ml: { xs: 0, md: "224px" },
+          width: { xs: "100%", md: "calc(100% - 224px)" },
+          maxWidth: "100%",
+          boxSizing: "border-box",
+          flexGrow: 1,
+          minWidth: 0,
+          height: "calc(100vh - 64px)",
+          overflowY: "auto",
+          pb: 6,
+        }}
+      >
+        <Typography>Loading authentication token...</Typography>
+      </Box>
+    );
+  }
 
   const fetchSystemPrompts = async () => {
     setLoading(true);
     try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}/admin/system_prompts`,
+        `${import.meta.env.VITE_API_ENDPOINT}admin/system_prompts`,
         {
           headers: {
-            Authorization: `Bearer ${user.signInUserSession.idToken.jwtToken}`,
+            Authorization: token,
           },
         }
       );
@@ -85,28 +131,31 @@ const AISettings = () => {
       setSystemPrompt(data.current_prompt || "");
       setPromptHistory(data.history || []);
     } catch (error) {
+      console.error("Error fetching system prompts:", error);
       showAlert("Failed to fetch system prompts", "error");
+      setPromptHistory([]);
     } finally {
       setLoading(false);
     }
   };
 
   const updateSystemPrompt = async () => {
-    if (!selectedGroup || !systemPrompt.trim()) return;
+    if (!systemPrompt.trim()) return;
 
     setLoading(true);
     try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}/admin/update_system_prompt?simulation_group_id=${selectedGroup}`,
+        `${import.meta.env.VITE_API_ENDPOINT}/admin/update_system_prompt`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${user.signInUserSession.idToken.jwtToken}`,
+            Authorization: token,
           },
           body: JSON.stringify({
             prompt_content: systemPrompt,
-            created_by: user.attributes.email,
           }),
         }
       );
@@ -127,12 +176,16 @@ const AISettings = () => {
   const restorePrompt = async (historyId) => {
     setLoading(true);
     try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT}/admin/restore_system_prompt?simulation_group_id=${selectedGroup}&history_id=${historyId}`,
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }/admin/restore_system_prompt?history_id=${historyId}`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${user.signInUserSession.idToken.jwtToken}`,
+            Authorization: token,
           },
         }
       );
@@ -140,7 +193,6 @@ const AISettings = () => {
       if (response.ok) {
         showAlert("System prompt restored successfully", "success");
         fetchSystemPrompts();
-        setHistoryDialogOpen(false);
       } else {
         showAlert("Failed to restore system prompt", "error");
       }
@@ -153,15 +205,36 @@ const AISettings = () => {
 
   const showAlert = (message, severity) => {
     setAlert({ show: true, message, severity });
-    setTimeout(() => setAlert({ show: false, message: "", severity: "info" }), 5000);
+    setTimeout(
+      () => setAlert({ show: false, message: "", severity: "info" }),
+      5000
+    );
   };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
   };
 
+  const totalPages = Math.ceil(promptHistory.length / PAGE_SIZE) || 0;
+  const start = historyPage * PAGE_SIZE;
+  const visibleHistory = promptHistory.slice(start, start + PAGE_SIZE);
+
   return (
-    <Box sx={{ p: 3, ml: 28, mt: 8 }}>
+    <Box
+      sx={{
+        p: 3,
+        mt: 8,
+        ml: { xs: 0, md: "224px" },
+        width: { xs: "100%", md: "calc(100% - 224px)" },
+        maxWidth: "100%",
+        boxSizing: "border-box",
+        flexGrow: 1,
+        minWidth: 0,
+        height: "calc(100vh - 64px)",
+        overflowY: "auto",
+        pb: 6,
+      }}
+    >
       <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
         <SettingsIcon sx={{ mr: 2, color: "#10b981" }} />
         <Typography variant="h4" sx={{ fontWeight: 600, color: "#1f2937" }}>
@@ -174,30 +247,6 @@ const AISettings = () => {
           {alert.message}
         </Alert>
       )}
-
-      {/* Group Selection */}
-      <Card sx={{ mb: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, color: "#374151" }}>
-            Simulation Group
-          </Typography>
-          <TextField
-            select
-            fullWidth
-            value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
-            SelectProps={{ native: true }}
-            variant="outlined"
-          >
-            <option value="">Select a group...</option>
-            {groups.map((group) => (
-              <option key={group.simulation_group_id} value={group.simulation_group_id}>
-                {group.group_name}
-              </option>
-            ))}
-          </TextField>
-        </CardContent>
-      </Card>
 
       {/* Message Limit Settings */}
       <Card sx={{ mb: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -249,88 +298,97 @@ const AISettings = () => {
       </Card>
 
       {/* System Prompt Editor */}
-      {selectedGroup && (
-        <Card sx={{ mb: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-          <CardContent>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6" sx={{ color: "#374151" }}>
-                System Prompt Editor
-              </Typography>
-              <Button
-                startIcon={<HistoryIcon />}
-                onClick={() => setHistoryDialogOpen(true)}
-                variant="outlined"
-                sx={{
-                  borderColor: "#10b981",
-                  color: "#10b981",
-                  "&:hover": {
-                    borderColor: "#059669",
-                    backgroundColor: "#f0fdf4",
-                  },
-                }}
-              >
-                View History
-              </Button>
-            </Box>
-            <TextField
-              fullWidth
-              multiline
-              rows={12}
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Enter the system prompt for the AI..."
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
-            <Button
-              startIcon={<SaveIcon />}
-              onClick={updateSystemPrompt}
-              disabled={loading || !systemPrompt.trim()}
-              variant="contained"
-              sx={{
-                backgroundColor: "#10b981",
-                "&:hover": {
-                  backgroundColor: "#059669",
-                },
-                "&:disabled": {
-                  backgroundColor: "#d1d5db",
-                },
-              }}
-            >
-              {loading ? "Saving..." : "Save System Prompt"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card sx={{ mb: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+        <CardContent>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Typography variant="h6" sx={{ color: "#374151" }}>
+              System Prompt Editor
+            </Typography>
+          </Box>
+          <TextField
+            fullWidth
+            multiline
+            rows={12}
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            placeholder="Enter the system prompt for the AI..."
+            variant="outlined"
+            sx={{ mb: 2 }}
+          />
+          <Button
+            startIcon={<SaveIcon />}
+            onClick={updateSystemPrompt}
+            disabled={loading || !systemPrompt.trim()}
+            variant="contained"
+            sx={{
+              backgroundColor: "#10b981",
+              "&:hover": {
+                backgroundColor: "#059669",
+              },
+              "&:disabled": {
+                backgroundColor: "#d1d5db",
+              },
+            }}
+          >
+            {loading ? "Saving..." : "Save System Prompt"}
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* History Dialog */}
-      <Dialog
-        open={historyDialogOpen}
-        onClose={() => setHistoryDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>System Prompt History</DialogTitle>
-        <DialogContent>
+      {/* Inline History Section with pagination */}
+      <Card sx={{ mb: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+        <CardContent>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
+            }}
+          >
+            <Typography variant="h6" sx={{ color: "#374151" }}>
+              Previous System Prompts
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <IconButton
+                aria-label="previous page"
+                onClick={() => setHistoryPage((p) => Math.max(0, p - 1))}
+                disabled={historyPage === 0}
+              >
+                <ArrowBackIosNewIcon />
+              </IconButton>
+              <Typography variant="body2" sx={{ mx: 1 }}>
+                {totalPages > 0
+                  ? `${historyPage + 1} / ${totalPages}`
+                  : "0 / 0"}
+              </Typography>
+              <IconButton
+                aria-label="next page"
+                onClick={() =>
+                  setHistoryPage((p) => Math.min(totalPages - 1, p + 1))
+                }
+                disabled={historyPage >= totalPages - 1 || totalPages === 0}
+              >
+                <ArrowForwardIosIcon />
+              </IconButton>
+            </Box>
+          </Box>
+
           {promptHistory.length === 0 ? (
             <Typography color="textSecondary">No history available</Typography>
           ) : (
             <List>
-              {promptHistory.map((item, index) => (
+              {visibleHistory.map((item, index) => (
                 <React.Fragment key={item.history_id}>
                   <ListItem alignItems="flex-start">
                     <ListItemText
                       primary={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <Typography variant="subtitle2">
                             {formatDate(item.created_at)}
                           </Typography>
-                          <Chip
-                            label={item.created_by || "Unknown"}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
                         </Box>
                       }
                       secondary={
@@ -354,21 +412,21 @@ const AISettings = () => {
                         onClick={() => restorePrompt(item.history_id)}
                         disabled={loading}
                         sx={{ color: "#10b981" }}
+                        aria-label={`Restore prompt from ${formatDate(
+                          item.created_at
+                        )}`}
                       >
                         <RestoreIcon />
                       </IconButton>
                     </ListItemSecondaryAction>
                   </ListItem>
-                  {index < promptHistory.length - 1 && <Divider />}
+                  {index < visibleHistory.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
             </List>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setHistoryDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

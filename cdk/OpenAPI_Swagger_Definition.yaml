@@ -2143,7 +2143,7 @@ paths:
                 {}
     get:
       tags:
-        - Instructor
+        - Admin
       summary: Get simulation groups where the instructor is enrolled
       operationId: instructor_get_groups_GET
       parameters:
@@ -3687,7 +3687,7 @@ paths:
         - instructorAuthorizer: []
       x-amazon-apigateway-integration:
         uri:
-          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${instructorFunction.Arn}/invocations"
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${adminFunction.Arn}/invocations"
         passthroughBehavior: "when_no_match"
         httpMethod: "POST"
         type: "aws_proxy"
@@ -3743,7 +3743,7 @@ paths:
         - instructorAuthorizer: []
       x-amazon-apigateway-integration:
         uri:
-          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${instructorFunction.Arn}/invocations"
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${adminFunction.Arn}/invocations"
         passthroughBehavior: "when_no_match"
         httpMethod: "POST"
         type: "aws_proxy"
@@ -4650,8 +4650,8 @@ paths:
     get:
       tags:
         - Admin
-      summary: Get latest system prompt and history from system prompt table
-      operationId: admin_get_system_prompts_GET
+      summary: Get current system prompt and history
+      operationId: admin_system_prompts_GET
       responses:
         "200":
           description: System prompts retrieved successfully
@@ -4675,10 +4675,6 @@ paths:
                         created_at:
                           type: string
                           format: date-time
-                        created_by:
-                          type: string
-                        is_active:
-                          type: boolean
         "400":
           description: Bad Request
         "500":
@@ -4730,9 +4726,6 @@ paths:
                 prompt_content:
                   type: string
                   description: New system prompt content
-                created_by:
-                  type: string
-                  description: Email of the user updating the prompt
               required:
                 - prompt_content
       responses:
@@ -4787,8 +4780,15 @@ paths:
         - Admin
       summary: Restore a system prompt as the latest active prompt
       operationId: admin_restore_system_prompt_POST
+      parameters:
+        - in: query
+          name: history_id
+          required: false
+          schema:
+            type: string
+          description: History ID of the prompt to restore. If omitted, provide prompt_content in the body.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -4797,11 +4797,6 @@ paths:
                 prompt_content:
                   type: string
                   description: System prompt content to restore
-                created_by:
-                  type: string
-                  description: Email of the user restoring the prompt
-              required:
-                - prompt_content
       responses:
         "200":
           description: System prompt restored successfully
