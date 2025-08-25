@@ -67,34 +67,35 @@ exports.handler = async (event) => {
           response.body = JSON.stringify({ error: "Internal server error" });
         }
         break;
-        case "POST /admin/enroll_instructor":
-          if (
-            event.queryStringParameters != null &&
-            event.queryStringParameters.simulation_group_id &&
-            event.queryStringParameters.instructor_email
-          ) {
-            try {
-              const { simulation_group_id, instructor_email } = event.queryStringParameters;
-      
-              // Retrieve user_id from users table based on the instructor email
-              const userResult = await sqlConnectionTableCreator`
+      case "POST /admin/enroll_instructor":
+        if (
+          event.queryStringParameters != null &&
+          event.queryStringParameters.simulation_group_id &&
+          event.queryStringParameters.instructor_email
+        ) {
+          try {
+            const { simulation_group_id, instructor_email } =
+              event.queryStringParameters;
+
+            // Retrieve user_id from users table based on the instructor email
+            const userResult = await sqlConnectionTableCreator`
                   SELECT user_id
                   FROM "users"
                   WHERE user_email = ${instructor_email};
                 `;
-      
-              const user_id = userResult[0]?.user_id;
-      
-              if (!user_id) {
-                response.statusCode = 400;
-                response.body = JSON.stringify({
-                  error: "Instructor email not found",
-                });
-                break;
-              }
-      
-              // Insert enrollment into enrolments table with current timestamp for the 'instructor' role
-              const enrollment = await sqlConnectionTableCreator`
+
+            const user_id = userResult[0]?.user_id;
+
+            if (!user_id) {
+              response.statusCode = 400;
+              response.body = JSON.stringify({
+                error: "Instructor email not found",
+              });
+              break;
+            }
+
+            // Insert enrollment into enrolments table with current timestamp for the 'instructor' role
+            const enrollment = await sqlConnectionTableCreator`
                   INSERT INTO "enrolments" (enrolment_id, simulation_group_id, user_id, enrolment_type, time_enroled)
                   VALUES (uuid_generate_v4(), ${simulation_group_id}, ${user_id}, 'instructor', CURRENT_TIMESTAMP)
                   ON CONFLICT (simulation_group_id, user_id) 
@@ -104,48 +105,51 @@ exports.handler = async (event) => {
                       time_enroled = EXCLUDED.time_enroled
                   RETURNING enrolment_id;
                 `;
-      
-              const enrolment_id = enrollment[0]?.enrolment_id;
-      
-              if (enrolment_id) {
-                // Retrieve all patient IDs associated with the simulation group
-                const patientsResult = await sqlConnectionTableCreator`
+
+            const enrolment_id = enrollment[0]?.enrolment_id;
+
+            if (enrolment_id) {
+              // Retrieve all patient IDs associated with the simulation group
+              const patientsResult = await sqlConnectionTableCreator`
                     SELECT patient_id
                     FROM "patients"
                     WHERE simulation_group_id = ${simulation_group_id};
                   `;
-      
-                // Insert a record into student_interactions for each patient in the simulation group
-                const studentInteractionInsertions = patientsResult.map((patient) => {
+
+              // Insert a record into student_interactions for each patient in the simulation group
+              const studentInteractionInsertions = patientsResult.map(
+                (patient) => {
                   return sqlConnectionTableCreator`
                       INSERT INTO "student_interactions" (student_interaction_id, patient_id, enrolment_id, patient_score, last_accessed, patient_context_embedding, is_completed)
                       VALUES (uuid_generate_v4(), ${patient.patient_id}, ${enrolment_id}, 0, CURRENT_TIMESTAMP, NULL, FALSE);
                     `;
-                });
-      
-                // Execute all insertions
-                await Promise.all(studentInteractionInsertions);
-              }
-      
-              response.body = JSON.stringify({
-                message: "Instructor enrolled and patients linked successfully.",
-              });
-      
-              // Optionally insert into User Engagement Log (uncomment if needed)
-              // await sqlConnectionTableCreator`
-              //   INSERT INTO "user_engagement_log" (log_id, user_id, simulation_group_id, patient_id, enrolment_id, timestamp, engagement_type)
-              //   VALUES (uuid_generate_v4(), ${user_id}, ${simulation_group_id}, null, ${enrolment_id}, CURRENT_TIMESTAMP, 'enrollment_created');
-              // `;
-            } catch (err) {
-              response.statusCode = 500;
-              console.log(err);
-              response.body = JSON.stringify({ error: "Internal server error" });
+                }
+              );
+
+              // Execute all insertions
+              await Promise.all(studentInteractionInsertions);
             }
-          } else {
-            response.statusCode = 400;
-            response.body = "simulation_group_id and instructor_email are required";
+
+            response.body = JSON.stringify({
+              message: "Instructor enrolled and patients linked successfully.",
+            });
+
+            // Optionally insert into User Engagement Log (uncomment if needed)
+            // await sqlConnectionTableCreator`
+            //   INSERT INTO "user_engagement_log" (log_id, user_id, simulation_group_id, patient_id, enrolment_id, timestamp, engagement_type)
+            //   VALUES (uuid_generate_v4(), ${user_id}, ${simulation_group_id}, null, ${enrolment_id}, CURRENT_TIMESTAMP, 'enrollment_created');
+            // `;
+          } catch (err) {
+            response.statusCode = 500;
+            console.log(err);
+            response.body = JSON.stringify({ error: "Internal server error" });
           }
-          break;
+        } else {
+          response.statusCode = 400;
+          response.body =
+            "simulation_group_id and instructor_email are required";
+        }
+        break;
       case "POST /admin/create_simulation_group":
         if (
           event.queryStringParameters != null &&
@@ -163,9 +167,9 @@ exports.handler = async (event) => {
               group_description,
               group_student_access,
             } = event.queryStringParameters;
-      
+
             const { system_prompt } = JSON.parse(event.body);
-      
+
             // Insert new simulation group into simulation_groups table
             const newSimulationGroup = await sqlConnectionTableCreator`
                   INSERT INTO "simulation_groups" (
@@ -186,7 +190,7 @@ exports.handler = async (event) => {
                   )
                   RETURNING *;
               `;
-      
+
             response.body = JSON.stringify(newSimulationGroup[0]);
           } catch (err) {
             response.statusCode = 500;
@@ -216,7 +220,9 @@ exports.handler = async (event) => {
           response.body = JSON.stringify(instructors);
         } else {
           response.statusCode = 400;
-          response.body = JSON.stringify({ error: "simulation_group_id is required" });
+          response.body = JSON.stringify({
+            error: "simulation_group_id is required",
+          });
         }
         break;
       case "GET /admin/instructorGroups":
@@ -265,7 +271,8 @@ exports.handler = async (event) => {
         } else {
           response.statusCode = 400;
           response.body = JSON.stringify({
-            error: "simulation_group_id and access query parameters are required",
+            error:
+              "simulation_group_id and access query parameters are required",
           });
         }
         break;
@@ -522,7 +529,7 @@ exports.handler = async (event) => {
 
           response.body = JSON.stringify({
             current_prompt: latestPrompt[0]?.prompt_content || "",
-            history: promptHistory
+            history: promptHistory,
           });
         } catch (err) {
           response.statusCode = 500;
@@ -547,7 +554,7 @@ exports.handler = async (event) => {
             `;
 
             response.body = JSON.stringify({
-              message: "System prompt updated successfully"
+              message: "System prompt updated successfully",
             });
           } catch (err) {
             response.statusCode = 500;
@@ -562,9 +569,11 @@ exports.handler = async (event) => {
       case "POST /admin/restore_system_prompt":
         try {
           // Prefer query param history_id; fallback to body with prompt_content for backward compatibility
-          const historyId = event.queryStringParameters && event.queryStringParameters.history_id
-            ? event.queryStringParameters.history_id
-            : null;
+          const historyId =
+            event.queryStringParameters &&
+            event.queryStringParameters.history_id
+              ? event.queryStringParameters.history_id
+              : null;
 
           if (historyId) {
             // Fetch the prompt_content for the given history_id and insert as new active prompt
@@ -578,7 +587,9 @@ exports.handler = async (event) => {
             const fromHistory = rows[0]?.prompt_content;
             if (!fromHistory) {
               response.statusCode = 404;
-              response.body = JSON.stringify({ error: "History entry not found" });
+              response.body = JSON.stringify({
+                error: "History entry not found",
+              });
               break;
             }
 
@@ -588,7 +599,7 @@ exports.handler = async (event) => {
             `;
 
             response.body = JSON.stringify({
-              message: "System prompt restored successfully"
+              message: "System prompt restored successfully",
             });
             break;
           }
@@ -608,7 +619,7 @@ exports.handler = async (event) => {
             `;
 
             response.body = JSON.stringify({
-              message: "System prompt restored successfully"
+              message: "System prompt restored successfully",
             });
           } else {
             response.statusCode = 400;
@@ -626,7 +637,8 @@ exports.handler = async (event) => {
             const { user_email, token_limit } = JSON.parse(event.body);
             if (!user_email || !token_limit || token_limit < 1000) {
               response.statusCode = 400;
-              response.body = "user_email and token_limit (min 1000) are required";
+              response.body =
+                "user_email and token_limit (min 1000) are required";
               break;
             }
 
@@ -637,7 +649,7 @@ exports.handler = async (event) => {
             `;
 
             response.body = JSON.stringify({
-              message: "User token limit updated successfully"
+              message: "User token limit updated successfully",
             });
           } catch (err) {
             response.statusCode = 500;
@@ -665,7 +677,7 @@ exports.handler = async (event) => {
             `;
 
             response.body = JSON.stringify({
-              message: "All user token limits updated successfully"
+              message: "All user token limits updated successfully",
             });
           } catch (err) {
             response.statusCode = 500;

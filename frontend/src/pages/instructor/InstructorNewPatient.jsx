@@ -68,6 +68,25 @@ export const InstructorNewPatient = ({ data, simulation_group_id, onClose, onPat
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("");
   const [patientPrompt, setPatientPrompt] = useState("");
+  // Voice selection state
+  const feminineVoices = ["tiffany", "amy", "ambre", "beatrice", "greta", "lupe"]; 
+  const masculineVoices = ["matthew", "florian", "lorenzo", "lennart", "carlos"]; 
+  // Friendly display labels mapped to backend voice IDs
+  const voiceLabels = {
+    tiffany: "US English (Female)",
+    amy: "UK English (Female)",
+    ambre: "French (Female)",
+    beatrice: "Italian (Female)",
+    greta: "German (Female)",
+    lupe: "Spanish (Female)",
+    matthew: "US English (Male)",
+    florian: "German (Male)",
+    lorenzo: "Italian (Male)",
+    lennart: "Dutch (Male)",
+    carlos: "Spanish (Male)"
+  };
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [nextPatientNumber, setNextPatientNumber] = useState(data.length + 1);
 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -379,9 +398,9 @@ export const InstructorNewPatient = ({ data, simulation_group_id, onClose, onPat
       const token = session.tokens.idToken;
       const { email } = await fetchUserAttributes();
 
+      const voiceQuery = selectedVoice ? `&voice_id=${encodeURIComponent(selectedVoice)}` : "";
       const response = await fetch(
-        `${import.meta.env.VITE_API_ENDPOINT
-        }instructor/create_patient?simulation_group_id=${encodeURIComponent(
+        `${import.meta.env.VITE_API_ENDPOINT}instructor/create_patient?simulation_group_id=${encodeURIComponent(
           simulation_group_id
         )}&patient_name=${encodeURIComponent(
           patientName
@@ -391,7 +410,7 @@ export const InstructorNewPatient = ({ data, simulation_group_id, onClose, onPat
           patientAge
         )}&patient_gender=${encodeURIComponent(
           patientGender
-        )}&instructor_email=${encodeURIComponent(email)}`,
+        )}&instructor_email=${encodeURIComponent(email)}${voiceQuery}`,
         {
           method: "POST",
           headers: {
@@ -465,6 +484,20 @@ export const InstructorNewPatient = ({ data, simulation_group_id, onClose, onPat
       }, 1000);
     }
   };
+
+  useEffect(() => {
+    // Update voices when gender changes
+    if (patientGender.toLowerCase() === "female") {
+      setAvailableVoices(feminineVoices);
+      setSelectedVoice(prev => (feminineVoices.includes(prev) ? prev : feminineVoices[0]));
+    } else if (patientGender.toLowerCase() === "male") {
+      setAvailableVoices(masculineVoices);
+      setSelectedVoice(prev => (masculineVoices.includes(prev) ? prev : masculineVoices[0]));
+    } else {
+      setAvailableVoices([...feminineVoices, ...masculineVoices]);
+      setSelectedVoice("");
+    }
+  }, [patientGender]);
 
   return (
     <PageContainer>
@@ -560,6 +593,20 @@ export const InstructorNewPatient = ({ data, simulation_group_id, onClose, onPat
           </Select>
         </FormControl>
 
+        {patientGender && (
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Voice</InputLabel>
+            <Select
+              value={selectedVoice}
+              label="Voice"
+              onChange={e => setSelectedVoice(e.target.value)}
+            >
+              {availableVoices.map(v => (
+                <MenuItem key={v} value={v}>{voiceLabels[v] || v}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
         <TextField
           label="Patient Prompt"
           value={patientPrompt}
