@@ -10,7 +10,7 @@ import DraggableNotes from "./DraggableNotes";
 import FilesPopout from "./FilesPopout";
 import EmpathyCoachSummary from "../../components/EmpathyCoachSummary";
 import { getSocket } from "../../utils/socket";
-import NovaVisualizer from "../../components/NovaVisualizer";
+
 import {
   startSpokenLLM,
   stopSpokenLLM,
