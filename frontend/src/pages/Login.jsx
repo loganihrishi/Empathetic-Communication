@@ -1,8 +1,5 @@
 import { useState } from "react";
 
-// logo
-import heartbeatImage from "../assets/heartbeat.png";
-
 import "./LoginStyles.css"; // Adjust the path if necessary
 
 // amplify
@@ -22,7 +19,6 @@ import {
   CssBaseline,
   TextField,
   Link,
-  Paper,
   Grid,
   Box,
   Typography,
@@ -32,19 +28,10 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 // login assets
 import PageContainer from "./Container";
-// cognito verifier
-import { CognitoJwtVerifier } from "aws-jwt-verify";
+
 // MUI theming
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-const { palette } = createTheme();
-const { augmentColor } = palette;
-const createColor = (mainColor) => augmentColor({ color: { main: mainColor } });
-const theme = createTheme({
-  palette: {
-    primary: createColor("#36bd78"),
-    bg: createColor("#F8F9FD"),
-  },
-});
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "../Theme";
 
 export const Login = () => {
   // auth account variables
@@ -66,30 +53,6 @@ export const Login = () => {
   const [step, setStep] = useState("requestReset");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  const verifyJwtToken = async (token) => {
-    try {
-      const verifier = CognitoJwtVerifier.create({
-        userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
-        tokenUse: "id", // Can be either 'id' or 'access'
-        clientId: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID,
-      });
-      // Verify the token
-      const payload = await verifier.verify(token);
-
-      // Check if 'groups' property is present
-      if (payload["cognito:groups"]) {
-        console.log("Groups:");
-      } else {
-        console.log("No groups found in the token.");
-      }
-
-      return payload;
-    } catch (error) {
-      console.error("Token verification failed:", error);
-      throw new Error("Unauthorized jwt token");
-    }
-  };
 
   // existing user sign in
   const handleSignIn = async (event) => {
@@ -454,51 +417,107 @@ export const Login = () => {
   return (
     <ThemeProvider theme={theme}>
       <PageContainer>
-        <Grid container component="main" sx={{ height: "100vh" }}>
+        <Grid
+          container
+          component="main"
+          sx={{ height: "100vh", bgcolor: "#ffffff" }}
+        >
           <CssBaseline />
           <Grid
             item
             xs={false}
             sm={3}
             md={5}
-            className="animatedGradient"
             sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "20px",
+              padding: "40px",
+              background:
+                "linear-gradient(135deg, #D1FAE5, #e3fcef 0%, #D1FAE5 100%)",
+              position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background:
+                  "radial-gradient(circle at 25% 25%, rgba(255,255,255,0.15), transparent 60%), radial-gradient(circle at 75% 75%, rgba(255,255,255,0.15), transparent 60%)",
+                pointerEvents: "none",
+              },
             }}
           >
-            <div style={{ textAlign: "center", marginTop: "20px" }}>
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "row",
+                textAlign: "left",
+                zIndex: 1,
+                maxWidth: "100%",
+              }}
+              className="fadeInLeft"
+            >
               <img
-                src={heartbeatImage}
+                src={"logo.png"}
                 alt="Heartbeat"
                 className="heartbeat-image"
                 style={{
-                  maxWidth: "25%", // Ensure the image fits within the container
-                  display: "block", // Make the image a block element
-                  height: "auto", // Maintain aspect ratio
-                  margin: "0 auto", // Center the image horizontally
-                  animation: "float 3s ease-in-out infinite", // Add the float animation
+                  width: "120px", // Fixed width for consistency
+                  maxWidth: "100%",
+                  height: "auto",
+                  maxHeight: "120px", // Prevent stretching vertically
+                  display: "block",
+                  margin: "0 auto 0px",
+                  objectFit: "contain", // Maintain aspect ratio
                 }}
               />
-              <Typography
-                variant="h4"
-                sx={{
-                  color: "black",
-                  fontWeight: "bold",
-                  fontSize: "clamp(1rem, 2.5vw, 2.5rem)", // More aggressive scaling: shrinks to 1rem on small screens
-                  lineHeight: "1.2", // Slightly tighter line spacing for smaller windows
-                  marginTop: "10px",
-                  textAlign: "center",
+              <div
+                style={{
+                  maxWidth: "80%",
+                  margin: "0 auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  textAlign: "left",
+                  justifyContent: "center",
+                  alignItems: "flex-start",
                 }}
               >
-                Welcome to
-                <br />
-                Virtual Care Interactions
-                <br />
-                Powered by AI
-              </Typography>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: "550",
+                    fontSize: "3rem",
+                    lineHeight: "1.1",
+                    marginBottom: "12px",
+                    textAlign: "left",
+                    fontFamily: "Outfit, sans-serif",
+                    marginLeft: "1rem",
+                  }}
+                  className="fadeInLeft"
+                >
+                  Virtual Care Interactions
+                </Typography>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: "500",
+                    fontSize: "1.5rem",
+                    lineHeight: "1.2",
+                    marginBottom: "8px",
+                    textAlign: "left",
+                    fontFamily: "Outfit, sans-serif",
+                  }}
+                  className="fadeInLeftDelay"
+                >
+                  With Empathetic Communication
+                </Typography>
+              </div>
             </div>
           </Grid>
 
@@ -513,13 +532,15 @@ export const Login = () => {
                 xs={12}
                 sm={9}
                 md={7}
-                component={Paper}
-                square
                 sx={{
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
                   height: "100%",
+                  bgcolor: "white",
+                  borderRadius: { sm: "20px 0 0 20px" },
+                  boxShadow:
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 <Box
@@ -529,16 +550,28 @@ export const Login = () => {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
+                    width: "100%",
+                    maxWidth: "400px",
                   }}
                 >
-                  <Typography component="h1" variant="h5">
+                  <Typography
+                    component="h1"
+                    variant="h4"
+                    sx={{
+                      color: "#1f2937",
+                      fontWeight: "700",
+                      marginBottom: "32px",
+                      fontSize: "1.875rem",
+                      fontFamily: "Outfit, sans-serif",
+                    }}
+                  >
                     Sign in
                   </Typography>
                   <Box
                     component="form"
                     noValidate
                     onSubmit={handleSignIn}
-                    sx={{ mt: 1 }}
+                    sx={{ mt: 1, width: "100%" }}
                   >
                     <TextField
                       margin="normal"
@@ -552,6 +585,37 @@ export const Login = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       inputProps={{ maxLength: 40 }}
+                      sx={{
+                        mb: 2,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "12px",
+                          backgroundColor: "#f9fafb",
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": {
+                            backgroundColor: "#f3f4f6",
+                          },
+                          "&.Mui-focused": {
+                            backgroundColor: "white",
+                            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                          },
+                          "& fieldset": {
+                            borderColor: "#e5e7eb",
+                          },
+                          "&:hover fieldset": {
+                            borderColor: "#10b981",
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#10b981",
+                            borderWidth: "2px",
+                          },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#6b7280",
+                          "&.Mui-focused": {
+                            color: "#10b981",
+                          },
+                        },
+                      }}
                     />
                     <TextField
                       margin="normal"
@@ -565,33 +629,104 @@ export const Login = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       inputProps={{ maxLength: 50 }}
+                      sx={{
+                        mb: 3,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "12px",
+                          backgroundColor: "#f9fafb",
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": {
+                            backgroundColor: "#f3f4f6",
+                          },
+                          "&.Mui-focused": {
+                            backgroundColor: "white",
+                            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                          },
+                          "& fieldset": {
+                            borderColor: "#e5e7eb",
+                          },
+                          "&:hover fieldset": {
+                            borderColor: "#10b981",
+                          },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#10b981",
+                            borderWidth: "2px",
+                          },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#6b7280",
+                          "&.Mui-focused": {
+                            color: "#10b981",
+                          },
+                        },
+                      }}
                     />
                     <Button
                       type="submit"
                       fullWidth
                       variant="contained"
-                      color="primary"
-                      sx={{ mt: 3, mb: 2 }}
+                      sx={{
+                        mt: 2,
+                        mb: 3,
+                        py: 1.5,
+                        borderRadius: "12px",
+                        backgroundColor: "#10b981",
+                        fontSize: "1rem",
+                        fontWeight: "600",
+                        textTransform: "none",
+                        boxShadow: "none",
+                        transition: "all 0.2s ease-in-out",
+                        color: "white",
+                        fontFamily: "Outfit, sans-serif",
+                        "&:hover": {
+                          backgroundColor: "#059669",
+                          transform: "translateY(-1px)",
+                          boxShadow: "none",
+                        },
+                        "&:active": {
+                          transform: "translateY(0)",
+                        },
+                      }}
                     >
                       Sign In
                     </Button>
-                    <Grid container>
+                    <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <Link
                           href="#"
                           variant="body2"
                           onClick={() => setForgotPassword(true)}
+                          sx={{
+                            color: "#10b981",
+                            textDecoration: "none",
+                            fontWeight: "500",
+                            transition: "color 0.2s ease-in-out",
+                            "&:hover": {
+                              color: "#059669",
+                              textDecoration: "underline",
+                            },
+                          }}
                         >
                           Forgot password?
                         </Link>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid item xs={6} sx={{ textAlign: "right" }}>
                         <Link
                           href="#"
                           variant="body2"
                           onClick={() => setNewSignUp(true)}
+                          sx={{
+                            color: "#10b981",
+                            textDecoration: "none",
+                            fontWeight: "500",
+                            transition: "color 0.2s ease-in-out",
+                            "&:hover": {
+                              color: "#059669",
+                              textDecoration: "underline",
+                            },
+                          }}
                         >
-                          {"Create your account"}
+                          Create your account
                         </Link>
                       </Grid>
                     </Grid>
@@ -605,13 +740,15 @@ export const Login = () => {
               xs={12}
               sm={9}
               md={7}
-              component={Paper}
-              square
               sx={{
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
                 height: "100%",
+                bgcolor: "white",
+                borderRadius: { sm: "20px 0 0 20px" },
+                boxShadow:
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               }}
             >
               <Box
@@ -621,13 +758,24 @@ export const Login = () => {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
+                  width: "100%",
+                  maxWidth: "500px",
                 }}
               >
-                <Typography component="h1" variant="h5" paddingBottom={3}>
+                <Typography
+                  component="h1"
+                  variant="h4"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: "700",
+                    marginBottom: "32px",
+                    fontSize: "1.875rem",
+                  }}
+                >
                   Create your account
                 </Typography>
                 <Box sx={{ mt: 1, width: "100%" }}>
-                  <Grid container spacing={2}>
+                  <Grid container spacing={3}>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         autoComplete="given-name"
@@ -640,6 +788,36 @@ export const Login = () => {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         inputProps={{ maxLength: 30 }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "12px",
+                            backgroundColor: "#f9fafb",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                              backgroundColor: "#f3f4f6",
+                            },
+                            "&.Mui-focused": {
+                              backgroundColor: "white",
+                              boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                            },
+                            "& fieldset": {
+                              borderColor: "#e5e7eb",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "#10b981",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "#10b981",
+                              borderWidth: "2px",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#6b7280",
+                            "&.Mui-focused": {
+                              color: "#10b981",
+                            },
+                          },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -653,6 +831,36 @@ export const Login = () => {
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         inputProps={{ maxLength: 30 }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "12px",
+                            backgroundColor: "#f9fafb",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                              backgroundColor: "#f3f4f6",
+                            },
+                            "&.Mui-focused": {
+                              backgroundColor: "white",
+                              boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                            },
+                            "& fieldset": {
+                              borderColor: "#e5e7eb",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "#10b981",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "#10b981",
+                              borderWidth: "2px",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#6b7280",
+                            "&.Mui-focused": {
+                              color: "#10b981",
+                            },
+                          },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
@@ -666,6 +874,36 @@ export const Login = () => {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         inputProps={{ maxLength: 40 }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "12px",
+                            backgroundColor: "#f9fafb",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                              backgroundColor: "#f3f4f6",
+                            },
+                            "&.Mui-focused": {
+                              backgroundColor: "white",
+                              boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                            },
+                            "& fieldset": {
+                              borderColor: "#e5e7eb",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "#10b981",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "#10b981",
+                              borderWidth: "2px",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#6b7280",
+                            "&.Mui-focused": {
+                              color: "#10b981",
+                            },
+                          },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
@@ -680,6 +918,36 @@ export const Login = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         inputProps={{ maxLength: 50 }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "12px",
+                            backgroundColor: "#f9fafb",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                              backgroundColor: "#f3f4f6",
+                            },
+                            "&.Mui-focused": {
+                              backgroundColor: "white",
+                              boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                            },
+                            "& fieldset": {
+                              borderColor: "#e5e7eb",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "#10b981",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "#10b981",
+                              borderWidth: "2px",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#6b7280",
+                            "&.Mui-focused": {
+                              color: "#10b981",
+                            },
+                          },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
@@ -694,15 +962,53 @@ export const Login = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         inputProps={{ maxLength: 50 }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "12px",
+                            backgroundColor: "#f9fafb",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                              backgroundColor: "#f3f4f6",
+                            },
+                            "&.Mui-focused": {
+                              backgroundColor: "white",
+                              boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                            },
+                            "& fieldset": {
+                              borderColor: "#e5e7eb",
+                            },
+                            "&:hover fieldset": {
+                              borderColor: "#10b981",
+                            },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "#10b981",
+                              borderWidth: "2px",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            color: "#6b7280",
+                            "&.Mui-focused": {
+                              color: "#10b981",
+                            },
+                          },
+                        }}
                       />
                     </Grid>
                   </Grid>
                   <Typography
                     variant="body2"
-                    color="textSecondary"
-                    align="center"
-                    paddingBottom={2}
-                    marginTop={2}
+                    sx={{
+                      color: "#6b7280",
+                      textAlign: "center",
+                      marginTop: "24px",
+                      marginBottom: "16px",
+                      padding: "16px",
+                      backgroundColor: "#f9fafb",
+                      borderRadius: "12px",
+                      border: "1px solid #e5e7eb",
+                      fontSize: "0.875rem",
+                      lineHeight: "1.5",
+                    }}
                   >
                     Providing personal information is optional and entirely at
                     your discretion. You can use this app without sharing any
@@ -711,20 +1017,49 @@ export const Login = () => {
                   <Button
                     fullWidth
                     variant="contained"
-                    color="primary"
                     onClick={handleSignUp}
-                    sx={{ mt: 3, mb: 2 }}
+                    sx={{
+                      mt: 2,
+                      mb: 3,
+                      py: 1.5,
+                      borderRadius: "12px",
+                      backgroundColor: "#10b981",
+                      fontSize: "1rem",
+                      boxShadow: "none",
+                      color: "white",
+                      fontWeight: "600",
+                      textTransform: "none",
+                      transition: "all 0.2s ease-in-out",
+                      "&:hover": {
+                        backgroundColor: "#059669",
+                        boxShadow: "none    ",
+                        transform: "translateY(-1px)",
+                      },
+                      "&:active": {
+                        transform: "translateY(0)",
+                      },
+                    }}
                   >
                     Sign Up
                   </Button>
-                  <Grid container>
-                    <Grid item xs>
+                  <Grid container justifyContent="center">
+                    <Grid item>
                       <Link
                         href="#"
                         variant="body2"
                         onClick={() => setNewSignUp(false)}
+                        sx={{
+                          color: "#10b981",
+                          textDecoration: "none",
+                          fontWeight: "500",
+                          transition: "color 0.2s ease-in-out",
+                          "&:hover": {
+                            color: "#059669",
+                            textDecoration: "underline",
+                          },
+                        }}
                       >
-                        Already have an account? {"Sign in"}
+                        Already have an account? Sign in
                       </Link>
                     </Grid>
                   </Grid>
@@ -786,104 +1121,210 @@ export const Login = () => {
           )}
           {/* new user confirm signup  */}
           {!loading && signUpConfirmation && (
-            <Box
+            <Grid
+              item
+              xs={12}
+              sm={9}
+              md={7}
               sx={{
-                my: 8,
-                mx: 2,
                 display: "flex",
-                flexDirection: "column",
+                justifyContent: "center",
                 alignItems: "center",
-                margin: "0 auto", // Center the content horizontally
-                justifyContent: "center", // Center the content vertically
+                height: "100%",
+                bgcolor: "white",
+                borderRadius: { sm: "20px 0 0 20px" },
+                boxShadow:
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               }}
             >
-              <Typography component="h1" variant="h5" paddingBottom={3}>
-                Account not verified
-              </Typography>
-              <p className="text-sm">
-                Please enter the confirmation code sent to your email.
-              </p>
-              <div className="flex flex-col items-center justify-center">
-                <form onSubmit={handleConfirmSignUp}>
-                  <input
-                    className="input input-bordered mt-1 h-10 w-full text-xs bg-gray-200 border border-gray-400 rounded pl-2"
-                    name="confirmationCode"
-                    placeholder="Confirmation Code"
-                    type="password"
-                    maxLength={15}
+              <Box
+                sx={{
+                  my: 8,
+                  mx: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  width: "100%",
+                  maxWidth: "400px",
+                }}
+              >
+                <Typography
+                  component="h1"
+                  variant="h4"
+                  sx={{
+                    color: "#1f2937",
+                    fontWeight: 700,
+                    marginBottom: "28px",
+                    fontSize: "1.875rem",
+                    fontFamily: "Outfit, sans-serif",
+                    textAlign: "center",
+                  }}
+                >
+                  Verify your account
+                </Typography>
+                <Box
+                  component="form"
+                  noValidate
+                  onSubmit={handleConfirmSignUp}
+                  sx={{ mt: 1, width: "100%" }}
+                >
+                  <TextField
+                    margin="normal"
                     required
+                    fullWidth
+                    id="confirmationCode"
+                    label="Confirmation Code"
+                    name="confirmationCode"
+                    autoFocus
+                    type="text"
+                    inputProps={{ maxLength: 15, inputMode: "numeric" }}
+                    sx={{
+                      mb: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "12px",
+                        backgroundColor: "#f9fafb",
+                        transition: "all 0.2s ease-in-out",
+                        "&:hover": { backgroundColor: "#f3f4f6" },
+                        "&.Mui-focused": {
+                          backgroundColor: "white",
+                          boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                        },
+                        "& fieldset": { borderColor: "#e5e7eb" },
+                        "&:hover fieldset": { borderColor: "#10b981" },
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#10b981",
+                          borderWidth: "2px",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "#6b7280",
+                        "&.Mui-focused": { color: "#10b981" },
+                      },
+                    }}
                   />
                   {confirmationError && (
-                    <div className="block text-m mb-1 mt-6 text-red-600">
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#dc2626", mt: 1, fontWeight: 500 }}
+                    >
                       {confirmationError}
-                    </div>
+                    </Typography>
                   )}
                   <Button
                     type="submit"
                     fullWidth
                     variant="contained"
-                    color="primary"
-                    sx={{ mt: 3, mb: 2 }}
+                    sx={{
+                      mt: 3,
+                      mb: 2,
+                      py: 1.5,
+                      borderRadius: "12px",
+                      backgroundColor: "#10b981",
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      textTransform: "none",
+                      boxShadow: "none",
+                      transition: "all 0.2s ease-in-out",
+                      color: "white",
+                      fontFamily: "Outfit, sans-serif",
+                      "&:hover": {
+                        backgroundColor: "#059669",
+                        transform: "translateY(-1px)",
+                        boxShadow: "none",
+                      },
+                      "&:active": { transform: "translateY(0)" },
+                    }}
                   >
-                    Submit
+                    Submit Code
                   </Button>
-                  <Button
-                    type="button"
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    sx={{ mt: 3, mb: 2 }}
-                    onClick={resendConfirmationCode}
-                  >
-                    Resend Code
-                  </Button>
-                </form>
-              </div>
-            </Box>
+                  <Box sx={{ textAlign: "center" }}>
+                    <Link
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        resendConfirmationCode();
+                      }}
+                      variant="body2"
+                      sx={{
+                        color: "#10b981",
+                        textDecoration: "none",
+                        fontWeight: 500,
+                        transition: "color 0.2s ease-in-out",
+                        display: "inline-block",
+                        "&:hover": {
+                          color: "#059669",
+                          textDecoration: "underline",
+                        },
+                      }}
+                    >
+                      Didn&apos;t get a code? Resend
+                    </Link>
+                  </Box>
+                </Box>
+              </Box>
+            </Grid>
           )}
           {/* forgot password?  */}
           {!loading && forgotPassword && (
             <Grid
               item
               xs={12}
-              sm={12}
+              sm={9}
               md={7}
-              component={Paper}
-              square
               sx={{
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                height: "100vh", // Center vertically and horizontally
+                height: "100%",
+                bgcolor: "white",
+                borderRadius: { sm: "20px 0 0 20px" },
+                boxShadow:
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               }}
             >
               <Box
                 sx={{
+                  my: 8,
+                  mx: 4,
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: "center",
                   alignItems: "center",
                   width: "100%",
-                  maxWidth: "500px", // Adjust for a clean form size
-                  padding: 4, // Spacing around content
+                  maxWidth: "420px",
                 }}
               >
-                {/* Title */}
                 <Typography
                   component="h1"
-                  variant="h5"
+                  variant="h4"
                   sx={{
-                    mb: 3,
+                    color: "#1f2937",
+                    fontWeight: 700,
+                    marginBottom: step === "confirmReset" ? "20px" : "28px",
+                    fontSize: "1.875rem",
+                    fontFamily: "Outfit, sans-serif",
                     textAlign: "center",
-                    fontSize: "1.8rem", // Match font size with Sign In
                   }}
                 >
-                  Reset Password
+                  {step === "confirmReset"
+                    ? "Enter reset code"
+                    : "Reset password"}
                 </Typography>
-
+                {message && step === "confirmReset" && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mb: 1,
+                      color: "#059669",
+                      textAlign: "center",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {message}
+                  </Typography>
+                )}
                 {/* Request Reset */}
                 {step === "requestReset" && (
-                  <>
+                  <Box sx={{ width: "100%" }}>
                     <TextField
                       label="Email Address"
                       type="email"
@@ -893,24 +1334,93 @@ export const Login = () => {
                       margin="normal"
                       inputProps={{ maxLength: 40 }}
                       sx={{
-                        fontSize: "1rem", // Ensure input matches font size
+                        mb: 2,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "12px",
+                          backgroundColor: "#f9fafb",
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": { backgroundColor: "#f3f4f6" },
+                          "&.Mui-focused": {
+                            backgroundColor: "white",
+                            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                          },
+                          "& fieldset": { borderColor: "#e5e7eb" },
+                          "&:hover fieldset": { borderColor: "#10b981" },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#10b981",
+                            borderWidth: "2px",
+                          },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#6b7280",
+                          "&.Mui-focused": { color: "#10b981" },
+                        },
                       }}
                     />
                     <Button
                       variant="contained"
-                      color="primary"
                       onClick={() => handleResetPassword(username)}
                       fullWidth
                       sx={{
-                        mt: 3,
-                        mb: 2,
-                        py: 1.2, // Vertical padding for height consistency
-                        fontSize: "1rem", // Match button text font size
+                        mt: 1,
+                        mb: 3,
+                        py: 1.5,
+                        borderRadius: "12px",
+                        backgroundColor: "#10b981",
+                        fontSize: "1rem",
+                        fontWeight: 600,
+                        textTransform: "none",
+                        boxShadow: "none",
+                        transition: "all 0.2s ease-in-out",
+                        color: "white",
+                        fontFamily: "Outfit, sans-serif",
+                        "&:hover": {
+                          backgroundColor: "#059669",
+                          transform: "translateY(-1px)",
+                          boxShadow: "none",
+                        },
+                        "&:active": { transform: "translateY(0)" },
                       }}
                     >
                       Send Reset Code
                     </Button>
-                  </>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        textAlign: "center",
+                        color: "#6b7280",
+                        fontSize: "0.85rem",
+                        lineHeight: 1.5,
+                        px: 1,
+                      }}
+                    >
+                      We will send a short‑lived code to your email so you can
+                      create a new password.
+                    </Typography>
+                    <Box sx={{ textAlign: "center", mt: 3 }}>
+                      <Link
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setForgotPassword(false);
+                        }}
+                        variant="body2"
+                        sx={{
+                          color: "#10b981",
+                          textDecoration: "none",
+                          fontWeight: 500,
+                          transition: "color 0.2s ease-in-out",
+                          display: "inline-block",
+                          "&:hover": {
+                            color: "#059669",
+                            textDecoration: "underline",
+                          },
+                        }}
+                      >
+                        Back to sign in
+                      </Link>
+                    </Box>
+                  </Box>
                 )}
 
                 {/* Confirm Reset */}
@@ -919,6 +1429,7 @@ export const Login = () => {
                     component="form"
                     noValidate
                     onSubmit={handleConfirmResetPassword}
+                    sx={{ width: "100%" }}
                   >
                     <TextField
                       label="Confirmation Code"
@@ -927,7 +1438,29 @@ export const Login = () => {
                       fullWidth
                       margin="normal"
                       inputProps={{ maxLength: 15 }}
-                      sx={{ fontSize: "1rem" }}
+                      sx={{
+                        mb: 2,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "12px",
+                          backgroundColor: "#f9fafb",
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": { backgroundColor: "#f3f4f6" },
+                          "&.Mui-focused": {
+                            backgroundColor: "white",
+                            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                          },
+                          "& fieldset": { borderColor: "#e5e7eb" },
+                          "&:hover fieldset": { borderColor: "#10b981" },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#10b981",
+                            borderWidth: "2px",
+                          },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#6b7280",
+                          "&.Mui-focused": { color: "#10b981" },
+                        },
+                      }}
                     />
                     <TextField
                       label="New Password"
@@ -937,62 +1470,104 @@ export const Login = () => {
                       fullWidth
                       margin="normal"
                       inputProps={{ maxLength: 50 }}
-                      sx={{ fontSize: "1rem" }}
+                      sx={{
+                        mb: 3,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "12px",
+                          backgroundColor: "#f9fafb",
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": { backgroundColor: "#f3f4f6" },
+                          "&.Mui-focused": {
+                            backgroundColor: "white",
+                            boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.1)",
+                          },
+                          "& fieldset": { borderColor: "#e5e7eb" },
+                          "&:hover fieldset": { borderColor: "#10b981" },
+                          "&.Mui-focused fieldset": {
+                            borderColor: "#10b981",
+                            borderWidth: "2px",
+                          },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#6b7280",
+                          "&.Mui-focused": { color: "#10b981" },
+                        },
+                      }}
                     />
+                    {error && (
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#dc2626", mt: 0, fontWeight: 500 }}
+                      >
+                        {error}
+                      </Typography>
+                    )}
                     <Button
                       type="submit"
                       variant="contained"
-                      color="primary"
                       fullWidth
                       sx={{
-                        mt: 3,
+                        mt: 1,
                         mb: 2,
-                        py: 1.2,
+                        py: 1.5,
+                        borderRadius: "12px",
+                        backgroundColor: "#10b981",
                         fontSize: "1rem",
-                        fontWeight: "bold",
+                        fontWeight: 600,
+                        textTransform: "none",
+                        boxShadow: "none",
+                        transition: "all 0.2s ease-in-out",
+                        color: "white",
+                        fontFamily: "Outfit, sans-serif",
+                        "&:hover": {
+                          backgroundColor: "#059669",
+                          transform: "translateY(-1px)",
+                          boxShadow: "none",
+                        },
+                        "&:active": { transform: "translateY(0)" },
                       }}
                     >
                       Reset Password
                     </Button>
+                    <Box sx={{ textAlign: "center", mt: 1 }}>
+                      <Link
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setForgotPassword(false);
+                          setStep("requestReset");
+                        }}
+                        variant="body2"
+                        sx={{
+                          color: "#10b981",
+                          textDecoration: "none",
+                          fontWeight: 500,
+                          transition: "color 0.2s ease-in-out",
+                          display: "inline-block",
+                          "&:hover": {
+                            color: "#059669",
+                            textDecoration: "underline",
+                          },
+                        }}
+                      >
+                        Back to sign in
+                      </Link>
+                    </Box>
                   </Box>
                 )}
-
-                {/* Success Message */}
                 {step === "done" && (
                   <Typography
                     color="primary"
-                    sx={{ mt: 3, textAlign: "center", fontSize: "1.2rem" }}
+                    sx={{
+                      mt: 1,
+                      textAlign: "center",
+                      fontSize: "1rem",
+                      fontWeight: 500,
+                    }}
                   >
                     Password has been successfully reset.
                   </Typography>
                 )}
-
-                {/* Error Message */}
-                {error && (
-                  <Typography
-                    color="error"
-                    sx={{ mt: 2, textAlign: "center", fontSize: "1rem" }}
-                  >
-                    {error}
-                  </Typography>
-                )}
-
-                {/* Remember Password Link */}
-                <Link
-                  href="#"
-                  variant="body2"
-                  onClick={() => setForgotPassword(false)}
-                  sx={{
-                    mt: 3,
-                    textAlign: "center",
-                    display: "block",
-                    fontSize: "1rem",
-                    fontWeight: "bold",
-                    color: "primary.main", // Match link color
-                  }}
-                >
-                  Remember your Password? <strong>Sign in</strong>
-                </Link>
               </Box>
             </Grid>
           )}
