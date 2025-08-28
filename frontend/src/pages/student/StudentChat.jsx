@@ -11,12 +11,7 @@ import FilesPopout from "./FilesPopout";
 import EmpathyCoachSummary from "../../components/EmpathyCoachSummary";
 import { getSocket } from "../../utils/socket";
 
-import {
-  startSpokenLLM,
-  stopSpokenLLM,
-  playAudio,
-  stopAudioPlayback,
-} from "../../utils/voiceStream";
+
 
 import { signOut } from "aws-amplify/auth";
 
@@ -1487,8 +1482,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
                 if (isRecording) {
                   // Stop immediately
                   allowAudioRef.current = false;
-                  stopAudioPlayback();
-                  stopSpokenLLM();
+                  // stopAudioPlayback();
+                  // stopSpokenLLM();
                   setIsRecording(false);
                   setShowVoiceOverlay(false);
                   setLoading(false);
@@ -1496,16 +1491,15 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
                   // Start voice; allow audio playback
                   allowAudioRef.current = true;
                   setShowVoiceOverlay(true);
-                  fetchVoiceID().then((voice_id) => {
-                    console.log("Session ID:", currentSessionId);
-                    startSpokenLLM(voice_id, setLoading, currentSessionId, {
-                      patient_name: patient?.patient_name,
-                      patient_prompt: patient?.patient_prompt,
-                      llm_completion: !!patient?.llm_completion,
-                      // If you have a group/system prompt available, pass it here; otherwise omit or keep empty
-                      system_prompt: group?.system_prompt || "",
-                    });
-                  });
+                  // fetchVoiceID().then((voice_id) => {
+                  //   console.log("Session ID:", currentSessionId);
+                  //   startSpokenLLM(voice_id, setLoading, currentSessionId, {
+                  //     patient_name: patient?.patient_name,
+                  //     patient_prompt: patient?.patient_prompt,
+                  //     llm_completion: !!patient?.llm_completion,
+                  //     system_prompt: group?.system_prompt || "",
+                  //   });
+                  // });
                   setIsRecording(true);
                   setLoading(true);
                 }
@@ -1786,8 +1780,8 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
                   // Disable any further playback and stop immediately
                   allowAudioRef.current = false;
                   getMessages();
-                  stopAudioPlayback();
-                  stopSpokenLLM();
+                  // stopAudioPlayback();
+                  // stopSpokenLLM();
                   setIsRecording(false);
                   setShowVoiceOverlay(false);
                   setLoading(false);
