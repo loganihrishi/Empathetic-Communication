@@ -17,7 +17,7 @@ export class VpcStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const existingVpcId: string = "vpc-0515a0d6ee4abcd8e"; // CHANGE IF DEPLOYING WITH EXISTING VPC
+    const existingVpcId: string = ""; // CHANGE IF DEPLOYING WITH EXISTING VPC
 
     if (existingVpcId !== "") {
       const AWSControlTowerStackSet =
