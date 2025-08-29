@@ -167,6 +167,8 @@ exports.handler = async (event) => {
               group_description,
               group_student_access,
               empathy_enabled,
+              admin_voice_enabled,
+              instructor_voice_enabled,
             } = event.queryStringParameters;
 
             const { system_prompt } = JSON.parse(event.body);
@@ -180,7 +182,9 @@ exports.handler = async (event) => {
                       group_access_code,
                       group_student_access,
                       system_prompt,
-                      empathy_enabled
+                      empathy_enabled,
+                      admin_voice_enabled,
+                      instructor_voice_enabled
                   )
                   VALUES (
                       uuid_generate_v4(),
@@ -189,7 +193,9 @@ exports.handler = async (event) => {
                       ${group_access_code},
                       ${group_student_access.toLowerCase() === "true"},
                       ${system_prompt},
-                      ${empathy_enabled ? empathy_enabled.toLowerCase() === "true" : true}
+                      ${empathy_enabled ? empathy_enabled.toLowerCase() === "true" : true},
+                      ${admin_voice_enabled ? admin_voice_enabled.toLowerCase() === "true" : true},
+                      ${instructor_voice_enabled ? instructor_voice_enabled.toLowerCase() === "true" : true}
                   )
                   RETURNING *;
               `;
@@ -258,19 +264,24 @@ exports.handler = async (event) => {
           event.queryStringParameters.simulation_group_id &&
           event.queryStringParameters.access
         ) {
-          const { simulation_group_id, access, empathy_enabled } = event.queryStringParameters;
+          const { simulation_group_id, access, empathy_enabled, admin_voice_enabled, instructor_voice_enabled } = event.queryStringParameters;
           const accessBool = access.toLowerCase() === "true";
           const empathyBool = empathy_enabled ? empathy_enabled.toLowerCase() === "true" : true;
+          const adminVoiceBool = admin_voice_enabled ? admin_voice_enabled.toLowerCase() === "true" : true;
+          const instructorVoiceBool = instructor_voice_enabled ? instructor_voice_enabled.toLowerCase() === "true" : true;
 
-          // SQL query to update group access and empathy_enabled
+          // SQL query to update group access, empathy_enabled, and voice settings
           await sqlConnectionTableCreator`
                     UPDATE "simulation_groups"
-                    SET group_student_access = ${accessBool}, empathy_enabled = ${empathyBool}
+                    SET group_student_access = ${accessBool}, 
+                        empathy_enabled = ${empathyBool},
+                        admin_voice_enabled = ${adminVoiceBool},
+                        instructor_voice_enabled = ${instructorVoiceBool}
                     WHERE simulation_group_id = ${simulation_group_id};
                   `;
 
           response.body = JSON.stringify({
-            message: "Group access updated successfully.",
+            message: "Group settings updated successfully.",
           });
         } else {
           response.statusCode = 400;

@@ -13,6 +13,7 @@ import {
   Switch,
   Tooltip,
   Avatar,
+  FormControlLabel,
   Collapse,
   Table,
   TableBody,
@@ -68,6 +69,8 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
   const [profilePictures, setProfilePictures] = useState({});
   const [expandedPatient, setExpandedPatient] = useState(null);
   const [ingestionStatus, setIngestionStatus] = useState({});
+  const [voiceSettings, setVoiceSettings] = useState({ adminVoiceEnabled: true, instructorVoiceEnabled: true });
+  const [instructorVoiceEnabled, setInstructorVoiceEnabled] = useState(true);
 
   const handleExpandRow = async (patientId) => {
     if (expandedPatient === patientId) {
@@ -417,7 +420,79 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
   // Fetch initial data
   useEffect(() => {
     fetchPatientsAndProfilePictures();
+    fetchVoiceSettings();
   }, [simulation_group_id]);
+
+  const fetchVoiceSettings = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
+      const { email } = await fetchUserAttributes();
+      const response = await fetch(
+        `${import.meta.env.VITE_API_ENDPOINT}instructor/groups?email=${encodeURIComponent(email)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: token,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const currentGroup = data.find(g => g.simulation_group_id === simulation_group_id);
+        if (currentGroup) {
+          setVoiceSettings({
+            adminVoiceEnabled: currentGroup.admin_voice_enabled !== false,
+            instructorVoiceEnabled: currentGroup.instructor_voice_enabled !== false
+          });
+          setInstructorVoiceEnabled(currentGroup.instructor_voice_enabled !== false);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching voice settings:", error);
+    }
+  };
+
+  const updateVoiceSettings = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
+      const response = await fetch(
+        `${import.meta.env.VITE_API_ENDPOINT}instructor/update_voice_settings?simulation_group_id=${encodeURIComponent(
+          simulation_group_id
+        )}&instructor_voice_enabled=${encodeURIComponent(instructorVoiceEnabled)}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: token,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.ok) {
+        toast.success("Voice settings updated successfully", {
+          position: "top-center",
+          autoClose: 2000,
+          theme: "colored",
+        });
+      } else {
+        console.error("Failed to update voice settings:", response.statusText);
+        toast.error("Failed to update voice settings", {
+          position: "top-center",
+          autoClose: 2000,
+          theme: "colored",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating voice settings:", error);
+      toast.error("Error updating voice settings", {
+        position: "top-center",
+        autoClose: 2000,
+        theme: "colored",
+      });
+    }
+  };
 
   const handleEditClick = (patientData) => {
     setSelectedPatient(patientData);
@@ -574,6 +649,26 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
         <Box sx={{ maxHeight: 480, overflowY: "auto", pr: 1 }}>
           <MRT_TableContainer table={table} />
         </Box>
+        <Box sx={{ mt: 1, display: "flex", justifyContent: "flex-end", maxWidth: "1200px", mx: "auto" }}>
+          <FormControlLabel
+            control={
+              <Switch 
+                size="small"
+                checked={instructorVoiceEnabled && voiceSettings.adminVoiceEnabled} 
+                onChange={async (e) => {
+                  setInstructorVoiceEnabled(e.target.checked);
+                  await updateVoiceSettings();
+                }}
+                disabled={!voiceSettings.adminVoiceEnabled}
+              />
+            }
+            label={`Enable voice conversations ${!voiceSettings.adminVoiceEnabled ? '(Disabled by Admin)' : ''}`}
+            sx={{
+              color: voiceSettings.adminVoiceEnabled ? "inherit" : "text.disabled",
+              fontSize: "0.875rem",
+            }}
+          />
+        </Box>
       </Paper>
       <Box
         sx={{
@@ -617,6 +712,8 @@ const InstructorPatients = ({ groupName, simulation_group_id }) => {
             Save Changes
           </Button>
         </Box>
+        
+
       </Box>
       <Dialog
         open={openNewPatientDialog}

@@ -150,8 +150,8 @@ export class EcsSocketStack extends Stack {
       cluster,
       taskDefinition: taskDef,
       desiredCount: 1,
-      assignPublicIp: false,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      assignPublicIp: true,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
 
     // 5.1) Allow the NLB (and CloudFront via NLB) to reach your service on port 80
@@ -170,14 +170,14 @@ export class EcsSocketStack extends Stack {
     // 6) Network Load Balancer on TCP 80
     const nlb = new elbv2.NetworkLoadBalancer(this, "SocketNLB", {
       vpc,
-      internetFacing: false,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      internetFacing: true,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
     const listener = nlb.addListener("TcpListener", {
       port: 80,
       protocol: elbv2.Protocol.TCP,
     });
-    listener.addTargets("EcsTargetGroup", {
+    listener.addTargets("EcsTargetGroupV2", {
       protocol: elbv2.Protocol.TCP,
       port: 80,
       targets: [service],
@@ -204,12 +204,18 @@ export class EcsSocketStack extends Stack {
       },
     });
 
-    // 8) Output the wss:// URL using the CloudFront domain
+    // 8) Output both CloudFront and direct NLB URLs
     this.socketUrl = `wss://${distro.domainName}`;
     new CfnOutput(this, "SocketUrl", {
       value: this.socketUrl,
       description: "WebSocket server URL via CloudFront + NLB",
       exportName: `${id}-SocketUrl`,
+    });
+    
+    new CfnOutput(this, "DirectSocketUrl", {
+      value: `ws://${nlb.loadBalancerDnsName}`,
+      description: "Direct WebSocket server URL (bypasses CloudFront)",
+      exportName: `${id}-DirectSocketUrl`,
     });
   }
 }

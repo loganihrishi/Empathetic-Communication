@@ -47,6 +47,8 @@ const GroupDetails = ({ group, onBack }) => {
   const [activeInstructors, setActiveInstructors] = useState([]);
   const [isActive, setIsActive] = useState(groupStatus);
   const [empathyEnabled, setEmpathyEnabled] = useState(false);
+  const [adminVoiceEnabled, setAdminVoiceEnabled] = useState(true);
+  const [instructorVoiceEnabled, setInstructorVoiceEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [allInstructors, setAllInstructors] = useState([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -130,6 +132,8 @@ const GroupDetails = ({ group, onBack }) => {
           const currentGroup = data.find(g => g.simulation_group_id === group.id);
           if (currentGroup) {
             setEmpathyEnabled(currentGroup.empathy_enabled !== false);
+            setAdminVoiceEnabled(currentGroup.admin_voice_enabled !== false);
+            setInstructorVoiceEnabled(currentGroup.instructor_voice_enabled !== false);
           }
         }
       } catch (error) {
@@ -312,7 +316,7 @@ const GroupDetails = ({ group, onBack }) => {
       const updateGroupAccess = await fetch(
         `${import.meta.env.VITE_API_ENDPOINT}admin/updateGroupAccess?&simulation_group_id=${encodeURIComponent(
           group.id
-        )}&access=${encodeURIComponent(isActive)}&empathy_enabled=${encodeURIComponent(empathyEnabled)}`,
+        )}&access=${encodeURIComponent(isActive)}&empathy_enabled=${encodeURIComponent(empathyEnabled)}&admin_voice_enabled=${encodeURIComponent(adminVoiceEnabled)}&instructor_voice_enabled=${encodeURIComponent(instructorVoiceEnabled)}`,
         {
           method: "POST",
           headers: {
@@ -415,6 +419,28 @@ const GroupDetails = ({ group, onBack }) => {
                 />
               }
               label="Enable empathy coach"
+            />
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={adminVoiceEnabled} 
+                  onChange={(e) => setAdminVoiceEnabled(e.target.checked)} 
+                />
+              }
+              label="Enable voice (Admin control)"
+            />
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={instructorVoiceEnabled && adminVoiceEnabled} 
+                  onChange={(e) => setInstructorVoiceEnabled(e.target.checked)}
+                  disabled={!adminVoiceEnabled}
+                />
+              }
+              label="Enable voice (Instructor control)"
+              sx={{
+                color: adminVoiceEnabled ? "inherit" : "text.disabled",
+              }}
             />
           </Paper>
           <Grid container spacing={2}>

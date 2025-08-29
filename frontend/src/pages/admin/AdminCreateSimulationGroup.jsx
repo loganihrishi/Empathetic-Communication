@@ -51,6 +51,8 @@ export const AdminCreateSimulationGroup = ({ setSelectedComponent }) => {
   const [groupDescription, setGroupDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [empathyEnabled, setEmpathyEnabled] = useState(true);
+  const [adminVoiceEnabled, setAdminVoiceEnabled] = useState(true);
+  const [instructorVoiceEnabled, setInstructorVoiceEnabled] = useState(true);
   const [selectedInstructors, setSelectedInstructors] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -112,7 +114,7 @@ export const AdminCreateSimulationGroup = ({ setSelectedComponent }) => {
           groupDescription
         )}&group_access_code=${encodeURIComponent(
           access_code
-        )}&group_student_access=${encodeURIComponent(isActive)}&empathy_enabled=${encodeURIComponent(empathyEnabled)}`,
+        )}&group_student_access=${encodeURIComponent(isActive)}&empathy_enabled=${encodeURIComponent(empathyEnabled)}&admin_voice_enabled=${encodeURIComponent(adminVoiceEnabled)}&instructor_voice_enabled=${encodeURIComponent(instructorVoiceEnabled)}`,
         {
           method: "POST",
           headers: {
@@ -354,6 +356,35 @@ export const AdminCreateSimulationGroup = ({ setSelectedComponent }) => {
             label="Enable empathy coach"
             sx={{
               color: "black",
+              textAlign: "left",
+              justifyContent: "flex-start",
+            }}
+          />
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={adminVoiceEnabled} 
+                onChange={(e) => setAdminVoiceEnabled(e.target.checked)} 
+              />
+            }
+            label="Enable voice (Admin control)"
+            sx={{
+              color: "black",
+              textAlign: "left",
+              justifyContent: "flex-start",
+            }}
+          />
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={instructorVoiceEnabled && adminVoiceEnabled} 
+                onChange={(e) => setInstructorVoiceEnabled(e.target.checked)}
+                disabled={!adminVoiceEnabled}
+              />
+            }
+            label="Enable voice (Instructor control)"
+            sx={{
+              color: adminVoiceEnabled ? "black" : "gray",
               textAlign: "left",
               justifyContent: "flex-start",
             }}

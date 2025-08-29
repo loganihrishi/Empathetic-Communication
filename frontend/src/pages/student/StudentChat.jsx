@@ -117,6 +117,7 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
   const [empathySummary, setEmpathySummary] = useState(null);
   const [isEmpathyLoading, setIsEmpathyLoading] = useState(false);
   const [empathyEnabled, setEmpathyEnabled] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
 
   const [patientInfoFiles, setPatientInfoFiles] = useState([]);
   const [isInfoLoading, setIsInfoLoading] = useState(false);
@@ -559,7 +560,41 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
     };
     
     fetchEmpathyEnabled();
+    fetchVoiceEnabled();
   }, [group]);
+
+  // Fetch voice enabled status
+  const fetchVoiceEnabled = async () => {
+    if (!group?.simulation_group_id) return;
+    
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens.idToken;
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_ENDPOINT
+        }student/voice_enabled?simulation_group_id=${encodeURIComponent(
+          group.simulation_group_id
+        )}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: token,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setVoiceEnabled(data.voice_enabled);
+      } else {
+        console.error("Failed to fetch voice enabled status:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error fetching voice enabled status:", error);
+    }
+  };
 
   async function retrieveKnowledgeBase(message, sessionId) {
     try {
@@ -1484,42 +1519,44 @@ const StudentChat = ({ group, patient, setPatient, setGroup }) => {
         <div className="border-t border-gray-200 p-6">
           <div className="bg-gray-50 border border-gray-200 rounded-2xl flex items-end space-x-3 p-4 focus-within:border-emerald-300 focus-within:bg-white transition-all duration-200">
             {/* Voice Button */}
-            <button
-              onClick={() => {
-                if (isRecording) {
-                  // Stop immediately
-                  allowAudioRef.current = false;
-                  stopAudioPlayback();
-                  stopSpokenLLM();
-                  setIsRecording(false);
-                  setShowVoiceOverlay(false);
-                  setLoading(false);
-                } else {
-                  // Start voice; allow audio playback
-                  allowAudioRef.current = true;
-                  setShowVoiceOverlay(true);
-                  fetchVoiceID().then((voice_id) => {
-                    console.log("Session ID:", currentSessionId);
-                    startSpokenLLM(voice_id, setLoading, currentSessionId, {
-                      patient_name: patient?.patient_name,
-                      patient_prompt: patient?.patient_prompt,
-                      llm_completion: !!patient?.llm_completion,
-                      // If you have a group/system prompt available, pass it here; otherwise omit or keep empty
-                      system_prompt: group?.system_prompt || "",
+            {voiceEnabled && (
+              <button
+                onClick={() => {
+                  if (isRecording) {
+                    // Stop immediately
+                    allowAudioRef.current = false;
+                    stopAudioPlayback();
+                    stopSpokenLLM();
+                    setIsRecording(false);
+                    setShowVoiceOverlay(false);
+                    setLoading(false);
+                  } else {
+                    // Start voice; allow audio playback
+                    allowAudioRef.current = true;
+                    setShowVoiceOverlay(true);
+                    fetchVoiceID().then((voice_id) => {
+                      console.log("Session ID:", currentSessionId);
+                      startSpokenLLM(voice_id, setLoading, currentSessionId, {
+                        patient_name: patient?.patient_name,
+                        patient_prompt: patient?.patient_prompt,
+                        llm_completion: !!patient?.llm_completion,
+                        // If you have a group/system prompt available, pass it here; otherwise omit or keep empty
+                        system_prompt: group?.system_prompt || "",
+                      });
                     });
-                  });
-                  setIsRecording(true);
-                  setLoading(true);
-                }
-              }}
-              className={`p-2 rounded-lg transition-colors duration-200 flex-shrink-0 ${
-                isRecording
-                  ? "bg-red-100 text-red-600 hover:bg-red-200"
-                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-              }`}
-            >
-              <MicIcon className="w-5 h-5" />
-            </button>
+                    setIsRecording(true);
+                    setLoading(true);
+                  }
+                }}
+                className={`p-2 rounded-lg transition-colors duration-200 flex-shrink-0 ${
+                  isRecording
+                    ? "bg-red-100 text-red-600 hover:bg-red-200"
+                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                }`}
+              >
+                <MicIcon className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Textarea */}
             <textarea
