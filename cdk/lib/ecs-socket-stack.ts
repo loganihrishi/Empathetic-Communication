@@ -89,6 +89,19 @@ export class EcsSocketStack extends Stack {
         resources: ["*"],
       })
     );
+    
+    // Add VPC endpoint permissions for private subnet access
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+        ],
+        resources: ["*"],
+      })
+    );
 
     taskRole.addToPolicy(
       new iam.PolicyStatement({
@@ -127,6 +140,8 @@ export class EcsSocketStack extends Stack {
         COGNITO_USER_POOL_ID: apiServiceStack.getUserPoolId(),
         COGNITO_CLIENT_ID: apiServiceStack.getUserPoolClientId(),
         IDENTITY_POOL_ID: apiServiceStack.getIdentityPoolId(),
+        TEXT_GENERATION_ENDPOINT: apiServiceStack.getEndpointUrl(),
+        APPSYNC_GRAPHQL_URL: apiServiceStack.appSyncApi.graphqlUrl,
       },
     });
 
@@ -143,6 +158,13 @@ export class EcsSocketStack extends Stack {
     service.connections.allowFromAnyIpv4(
       ec2.Port.tcp(80),
       "AllowHTTPFromLoadBalancer"
+    );
+    
+    // Allow NLB to reach ECS service from VPC
+    service.connections.allowFrom(
+      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      ec2.Port.tcp(80),
+      "Allow NLB to reach ECS service"
     );
 
     // 6) Network Load Balancer on TCP 80
@@ -175,9 +197,10 @@ export class EcsSocketStack extends Stack {
         origin: new origins.HttpOrigin(nlb.loadBalancerDnsName, {
           protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
         }),
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL, // Supports WebSocket Upgrade
-        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Disable caching
-        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER, // Forward all headers (incl. Upgrade)
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
     });
 

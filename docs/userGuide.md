@@ -124,6 +124,18 @@ Additionally, on the chat page, the student can use the 'Notes' button to open a
 ![image](./images/student-new-conversation-notes-button.png)
 ![image](./images/student-new-conversation-notes.png)
 
+Students are also able to start a voice conversation with their patient by pressing the mic icon in the chat bar at the bottom of the page.
+
+![image](./images/student-spoken-convo-button.png)
+
+From here, the patient will be able to converse with their patient in realtime, and access their notes.
+
+![image](./images/student-spoken-convo.png)
+
+At any point in the conversation, the student is able to view their empathy evaluation by clicking the empathy coach on the left-hand side. This will evaluate the student based on how much empathy they've shown towards their patient, and guide them as to how to be more empathetic.
+![image](./images/empathy-coach-1.png)
+![image](./images/empathy-coach-2.png)
+
 The student can also access the patient info posted by the instructor. There, they can find useful information that may assist them in chatting with the patient.
 ![image](./images/student-new-conversation-patient-info-button.png)
 ![image](./images/student-new-conversation-patient-info.png)

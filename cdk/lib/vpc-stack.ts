@@ -126,25 +126,32 @@ export class VpcStack extends Stack {
       this.vpc.addInterfaceEndpoint("SSM Endpoint", {
         service: ec2.InterfaceVpcEndpointAwsService.SSM,
         subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-        privateDnsEnabled: false, // Disable private DNS to avoid conflicts
+        privateDnsEnabled: true, // Enable private DNS for proper resolution
       });
 
       this.vpc.addInterfaceEndpoint("Secrets Manager Endpoint", {
         service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
         subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-        privateDnsEnabled: false, // Disable private DNS to avoid conflicts
+        privateDnsEnabled: true, // Enable private DNS for proper resolution
       });
 
       this.vpc.addInterfaceEndpoint("RDS Endpoint", {
         service: ec2.InterfaceVpcEndpointAwsService.RDS,
         subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-        privateDnsEnabled: false, // Disable private DNS to avoid conflicts
+        privateDnsEnabled: true, // Enable private DNS for proper resolution
       });
 
       this.vpc.addInterfaceEndpoint("Glue Endpoint", {
         service: ec2.InterfaceVpcEndpointAwsService.GLUE,
         subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-        privateDnsEnabled: false, // Disable private DNS to avoid conflicts
+        privateDnsEnabled: true, // Enable private DNS for proper resolution
+      });
+      
+      // Add API Gateway VPC endpoint
+      this.vpc.addInterfaceEndpoint("API Gateway Endpoint", {
+        service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
+        subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+        privateDnsEnabled: true,
       });
 
       this.vpc.addFlowLog(`${id}-vpcFlowLog`);
