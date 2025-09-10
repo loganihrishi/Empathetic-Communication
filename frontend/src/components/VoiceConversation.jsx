@@ -26,27 +26,38 @@ const VoiceConversation = ({ open, onClose, patientContext = "" }) => {
     };
   }, [open]);
 
-  const connectToVoiceService = () => {
+  const connectToVoiceService = async () => {
     // Use Socket.IO
     const socketUrl = import.meta.env.VITE_VOICE_SOCKETIO_URL || 'http://localhost:3001';
     console.log('Connecting to Socket.IO voice service:', socketUrl);
     
-    // Get JWT token from localStorage
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token) {
-      console.error('No authentication token found');
-      setConnectionStatus('error');
-      return;
-    }
-    
-    // Import socket.io-client dynamically
-    import('socket.io-client').then(({ io }) => {
+    try {
+      // Get JWT token from Amplify
+      const { fetchAuthSession } = await import('aws-amplify/auth');
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      
+      if (!token) {
+        console.error('No authentication token found');
+        setConnectionStatus('error');
+        return;
+      }
+      
+      console.log('Using JWT token for WebSocket auth');
+      
+      // Import socket.io-client dynamically
+      const { io } = await import('socket.io-client');
       websocketRef.current = io(socketUrl, {
         transports: ['websocket', 'polling'],
         auth: {
           token: token
         }
       });
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      setConnectionStatus('error');
+      return;
+    }
       
       websocketRef.current.on('connect', () => {
         console.log('Socket.IO connected');
@@ -79,7 +90,6 @@ const VoiceConversation = ({ open, onClose, patientContext = "" }) => {
         console.error('Socket.IO connection error:', error);
         setConnectionStatus('error');
       });
-    });
   };
 
   const disconnectFromVoiceService = () => {
