@@ -16,11 +16,11 @@ export class DBFlowStack extends Stack {
     constructor(scope: Construct, id: string, vpcStack: VpcStack, db: DatabaseStack, apiStack: ApiServiceStack, props?: StackProps) {
         super(scope, id, props);
 
-        // Create psycopg2 layer directly in this stack to avoid export dependency
-        const psycopgLambdaLayer = new lambda.LayerVersion(this, 'psycopgLambdaLayer', {
-            code: lambda.Code.fromAsset('./layers/psycopg2.zip'),
-            compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
-            description: 'Lambda layer containing the psycopg2 Python library',
+        // Create the node-pg-migrate layer from the ZIP file
+        const nodePgMigrateLayer = new lambda.LayerVersion(this, `${id}-node-pg-migrate-layer`, {
+            code: lambda.Code.fromAsset("layers/node-pg-migrate.zip"),
+            compatibleRuntimes: [lambda.Runtime.NODEJS_18_X],
+            description: "Node.js pg-migrate dependencies layer"
         });
 
         // Create IAM role for Lambda within the VPC
@@ -83,8 +83,8 @@ export class DBFlowStack extends Stack {
             // Force a new deployment by adding a timestamp
             description: `Database initializer and migration runner - ${new Date().toISOString()}`,
             functionName: `${id}-initializerFunction`,
-            runtime: lambda.Runtime.PYTHON_3_11,
-            handler: "initializer.handler",
+            runtime: lambda.Runtime.NODEJS_18_X,
+            handler: "index.handler",
             timeout: Duration.seconds(300),
             memorySize: 512,
             environment: {
@@ -95,7 +95,7 @@ export class DBFlowStack extends Stack {
             vpc: db.dbInstance.vpc,
             vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
             code: lambda.Code.fromAsset("lambda/db_setup"),
-            layers: [psycopgLambdaLayer],
+            layers: [nodePgMigrateLayer],
             role: lambdaRole,
         });
 
