@@ -206,8 +206,8 @@ def handler(event, context):
         
         # Store the JWT token for AppSync authentication
         from helpers.chat import get_cognito_token
-        get_cognito_token.current_token = jwt_token
-        logger.info(f"✅ Cognito JWT token extracted and stored: {jwt_token[:20]}...")
+        get_cognito_token.current_token = f"Bearer {jwt_token}"
+        logger.info(f"✅ Cognito JWT token extracted and stored: Bearer {jwt_token[:20]}...")
     else:
         logger.warning(f"❌ No Authorization header found. Available headers: {list(headers.keys()) if 'headers' in locals() else 'No headers'}")
 
@@ -353,6 +353,7 @@ def handler(event, context):
         )
     except Exception as e:
         logger.error(f"Error getting response: {e}")
+        logger.exception("Full error details:")
         return {
             'statusCode': 500,
             "headers": {
@@ -361,7 +362,7 @@ def handler(event, context):
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "*",
             },
-            'body': json.dumps('Error getting response')
+            'body': json.dumps(f'Error getting response: {str(e)}')
         }
 
     try:

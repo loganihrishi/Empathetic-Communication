@@ -282,18 +282,24 @@ def get_response(
     dict: A dictionary containing the generated response and the source documents used in the retrieval.
     """
     
-    # Evaluate empathy if this is a student response (not initial greeting)
+    # Re-enable empathy evaluation for non-streaming mode
     empathy_evaluation = None
     empathy_feedback = ""
     if query.strip() and "Greet me" not in query:
-        patient_context = f"Patient: {patient_name}, Age: {patient_age}, Condition: {patient_prompt}"
-        deployment_region = os.environ.get('AWS_REGION', 'us-east-1')
-        nova_client = {
-            "client": boto3.client("bedrock-runtime", region_name=deployment_region),
-            "model_id": "amazon.nova-pro-v1:0"
-        }
-        empathy_evaluation = evaluate_empathy(query, patient_context, nova_client)
-        save_message_to_db(session_id, True, query, empathy_evaluation)
+        try:
+            patient_context = f"Patient: {patient_name}, Age: {patient_age}, Condition: {patient_prompt}"
+            deployment_region = os.environ.get('AWS_REGION', 'us-east-1')
+            nova_client = {
+                "client": boto3.client("bedrock-runtime", region_name=deployment_region),
+                "model_id": "amazon.nova-pro-v1:0"
+            }
+            empathy_evaluation = evaluate_empathy(query, patient_context, nova_client)
+            save_message_to_db(session_id, True, query, empathy_evaluation)
+        except Exception as e:
+            logger.error(f"Empathy evaluation failed: {e}")
+            save_message_to_db(session_id, True, query, None)
+    else:
+        save_message_to_db(session_id, True, query, None)
         if empathy_evaluation:
             # Calculate overall empathy score as average of all dimensions
             pt_score = empathy_evaluation.get('perspective_taking', 3)
@@ -513,23 +519,7 @@ def get_response(
         # Save AI response to PostgreSQL
         save_message_to_db(session_id, False, response, None)
         
-        # Run empathy evaluation after streaming completes
-        if query.strip() and "Greet me" not in query:
-            patient_context = f"Patient: {patient_name}, Age: {patient_age}, Condition: {patient_prompt}"
-            nova_client = {
-                "client": boto3.client("bedrock-runtime", region_name="us-east-1"),
-                "model_id": "amazon.nova-pro-v1:0"
-            }
-            empathy_evaluation = evaluate_empathy(query, patient_context, nova_client)
-            # Save student message with empathy evaluation
-            save_message_to_db(session_id, True, query, empathy_evaluation)
-            # Send empathy data to frontend
-            if empathy_evaluation:
-                publish_to_appsync(session_id, {"type": "empathy", "content": json.dumps(empathy_evaluation)})
-        else:
-            # Save student message without empathy evaluation
-            save_message_to_db(session_id, True, query, None)
-        
+        # Empathy evaluation is handled in generate_streaming_response
         return {"llm_output": response, "session_name": "Chat", "llm_verdict": False}
     
     result = get_llm_output(response, llm_completion, empathy_feedback)
@@ -590,6 +580,7 @@ def generate_streaming_response(
 
     def empathy_async():
         try:
+            logger.info(f"🧠 Starting empathy evaluation for query: {query[:50]}...")
             patient_context = f"Patient: {patient_name}, Age: {patient_age}, Condition: {patient_prompt}"
             deployment_region = os.environ.get('AWS_REGION', 'us-east-1')
             nova_client = {
@@ -597,18 +588,37 @@ def generate_streaming_response(
                 "model_id": "amazon.nova-pro-v1:0"
             }
             evaluation = evaluate_empathy(query, patient_context, nova_client)
-            feedback = build_empathy_feedback(evaluation)  # <- use your existing markdown builder
-            if feedback:
-                publish_to_appsync(session_id, {"type": "empathy", "content": feedback})
+            logger.info(f"🧠 Empathy evaluation completed: {evaluation is not None}")
+            
+            # Save student message with empathy evaluation
+            save_message_to_db(session_id, True, query, evaluation)
+            
+            # Send empathy data to frontend
+            if evaluation:
+                logger.info(f"🧠 Publishing empathy data to AppSync")
+                publish_to_appsync(session_id, {"type": "empathy", "content": json.dumps(evaluation)})
+            else:
+                logger.warning(f"🧠 No empathy evaluation to publish")
         except Exception as e:
             logger.exception("Async empathy publish failed")
+            # Save student message without empathy evaluation if evaluation fails
+            save_message_to_db(session_id, True, query, None)
 
     try:
         # kick empathy off in the background for real student message
         logger.info(f"🔍 Checking empathy conditions: query='{query}', stripped='{query.strip()}', Greet check={'Greet me' in query}")
 
-        # Empathy evaluation will happen after streaming completes
-        logger.info(f"📝 Empathy evaluation will run after streaming completes")
+        # Start empathy evaluation in background if this is a real student message
+        if query.strip() and "Greet me" not in query:
+            logger.info(f"📝 Starting empathy evaluation in background")
+            empathy_thread = Thread(target=empathy_async)
+            empathy_thread.daemon = True  # Make thread daemon so it doesn't block Lambda shutdown
+            empathy_thread.start()
+            logger.info(f"📝 Empathy thread started successfully")
+        else:
+            logger.info(f"📝 Skipping empathy evaluation for greeting message")
+            # Save student message without empathy evaluation for greeting
+            save_message_to_db(session_id, True, query, None)
 
         publish_to_appsync(session_id, {"type": "start", "content": ""})
 
@@ -660,6 +670,10 @@ def generate_streaming_response(
         # end + persist
         publish_to_appsync(session_id, {"type": "end", "content": full_response})
         save_message_to_db(session_id, False, full_response, None)
+        
+        # Save student message without empathy evaluation (empathy thread will save it with evaluation)
+        if not (query.strip() and "Greet me" not in query):
+            save_message_to_db(session_id, True, query, None)
 
         return full_response
 
@@ -881,46 +895,51 @@ def get_empathy_level_name(score: int) -> str:
 
 def get_empathy_prompt() -> str:
     """Retrieve the latest empathy prompt from the empathy_prompt_history table."""
-    try:
-        # Get database credentials from AWS Secrets Manager
-        secrets_client = boto3.client('secretsmanager')
-        db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-        rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
+    # TEMPORARY: Use default prompt to get empathy coach working again
+    logger.info("🔧 Using default empathy prompt (bypassing database for now)")
+    return get_default_empathy_prompt()
+    
+    # TODO: Re-enable database retrieval after fixing the issue
+    # try:
+    #     # Get database credentials from AWS Secrets Manager
+    #     secrets_client = boto3.client('secretsmanager')
+    #     db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
+    #     rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
 
-        if not db_secret_name or not rds_endpoint:
-            logger.warning("Database credentials not available for empathy prompt retrieval")
-            return get_default_empathy_prompt()
+    #     if not db_secret_name or not rds_endpoint:
+    #         logger.warning("Database credentials not available for empathy prompt retrieval")
+    #         return get_default_empathy_prompt()
 
-        secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-        secret = json.loads(secret_response['SecretString'])
+    #     secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
+    #     secret = json.loads(secret_response['SecretString'])
 
-        # Connect to database
-        conn = psycopg2.connect(
-            host=rds_endpoint,
-            port=secret['port'],
-            database=secret['dbname'],
-            user=secret['username'],
-            password=secret['password']
-        )
-        cursor = conn.cursor()
+    #     # Connect to database
+    #     conn = psycopg2.connect(
+    #         host=rds_endpoint,
+    #         port=secret['port'],
+    #         database=secret['dbname'],
+    #         user=secret['username'],
+    #         password=secret['password']
+    #     )
+    #     cursor = conn.cursor()
 
-        # Get the latest empathy prompt
-        cursor.execute(
-            'SELECT prompt_content FROM empathy_prompt_history ORDER BY created_at DESC LIMIT 1'
-        )
-        
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
+    #     # Get the latest empathy prompt
+    #     cursor.execute(
+    #         'SELECT prompt_content FROM empathy_prompt_history ORDER BY created_at DESC LIMIT 1'
+    #     )
+    #     
+    #     result = cursor.fetchone()
+    #     cursor.close()
+    #     conn.close()
 
-        if result and result[0]:
-            return result[0]
-        else:
-            return get_default_empathy_prompt()
+    #     if result and result[0]:
+    #         return result[0]
+    #     else:
+    #         return get_default_empathy_prompt()
 
-    except Exception as e:
-        logger.error(f"Error retrieving empathy prompt from DB: {e}")
-        return get_default_empathy_prompt()
+    # except Exception as e:
+    #     logger.error(f"Error retrieving empathy prompt from DB: {e}")
+    #     return get_default_empathy_prompt()
 
 def get_default_empathy_prompt() -> str:
     """Default empathy evaluation prompt."""
@@ -1149,12 +1168,14 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
 
     # Get empathy prompt from database
     empathy_prompt_template = get_empathy_prompt()
+    logger.info(f"🔍 Retrieved empathy prompt: {empathy_prompt_template[:200]}...")
     
     # Format the prompt with actual values
     evaluation_prompt = empathy_prompt_template.format(
         patient_context=patient_context,
         user_text=student_response
     )
+    logger.info(f"🔍 Formatted evaluation prompt: {evaluation_prompt[:300]}...")
 
     body = {
         "messages": [{
@@ -1188,6 +1209,8 @@ def evaluate_empathy(student_response: str, patient_context: str, bedrock_client
         
         result = json.loads(response["body"].read())
         response_text = result["output"]["message"]["content"][0]["text"]
+        
+        logger.info(f"🔍 RAW NOVA RESPONSE: {response_text}")
         
         # Extract and clean JSON from response
         try:
