@@ -185,7 +185,9 @@ def get_patient_details(patient_id):
 
 
 def handler(event, context):
-    logger.info("Text Generation Lambda function is called!")
+    # Version: 2024-01-15-empathy-fix-v2 - Force new deployment
+    logger.info("🚀 STREAMING FUNCTION STARTED - Text Generation Lambda function is called!")
+    logger.info("🔧 EMPATHY EVALUATION SYSTEM LOADED")
     logger.info(f"📝 Event headers: {event.get('headers', {})}")
     logger.info(f"🔍 FULL EVENT: {json.dumps(event, default=str)}")
     initialize_constants()
