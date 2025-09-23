@@ -1415,7 +1415,9 @@ exports.handler = async (event) => {
                   AND e.simulation_group_id = ${simulation_group_id}
                   AND p.patient_id = ${patient_id}
                   AND m.student_sent = true
-                  AND m.empathy_evaluation IS NOT NULL;
+                  AND m.empathy_evaluation IS NOT NULL
+                  AND m.empathy_evaluation != '{}'
+                  AND m.empathy_evaluation::text != 'null';
                 `;
               } else {
                 // If no patient_id, get all empathy data for the student in this simulation group
@@ -1430,7 +1432,9 @@ exports.handler = async (event) => {
                   WHERE e.user_id = ${userId}
                   AND e.simulation_group_id = ${simulation_group_id}
                   AND m.student_sent = true
-                  AND m.empathy_evaluation IS NOT NULL;
+                  AND m.empathy_evaluation IS NOT NULL
+                  AND m.empathy_evaluation != '{}'
+                  AND m.empathy_evaluation::text != 'null';
                 `;
               }
             } catch (error) {
@@ -1553,7 +1557,7 @@ exports.handler = async (event) => {
               (weaknesses ? `Areas for development: ${weaknesses}. ` : "") +
               `The student shows ${empathySummary} in their interactions.`;
 
-            // Get total interactions count
+            // Get total interactions count (only empathy-evaluated messages)
             let totalInteractions;
             if (patient_id) {
               totalInteractions = await sqlConnection`
@@ -1566,7 +1570,10 @@ exports.handler = async (event) => {
                 WHERE e.user_id = ${userId}
                 AND e.simulation_group_id = ${simulation_group_id}
                 AND p.patient_id = ${patient_id}
-                AND m.student_sent = true;
+                AND m.student_sent = true
+                AND m.empathy_evaluation IS NOT NULL
+                AND m.empathy_evaluation != '{}'
+                AND m.empathy_evaluation::text != 'null';
               `;
             } else {
               totalInteractions = await sqlConnection`
@@ -1577,7 +1584,10 @@ exports.handler = async (event) => {
                 JOIN "enrolments" e ON si.enrolment_id = e.enrolment_id
                 WHERE e.user_id = ${userId}
                 AND e.simulation_group_id = ${simulation_group_id}
-                AND m.student_sent = true;
+                AND m.student_sent = true
+                AND m.empathy_evaluation IS NOT NULL
+                AND m.empathy_evaluation != '{}'
+                AND m.empathy_evaluation::text != 'null';
               `;
             }
 

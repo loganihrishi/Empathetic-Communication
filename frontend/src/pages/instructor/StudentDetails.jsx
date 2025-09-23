@@ -408,8 +408,8 @@ const StudentDetails = () => {
       const session = await fetchAuthSession();
       const token = session.tokens.idToken;
       
-      // Build the URL with optional patient_id parameter
-      let url = `${import.meta.env.VITE_API_ENDPOINT}instructor/empathy_summary?simulation_group_id=${encodeURIComponent(
+      // Build the URL with required parameters
+      let url = `${import.meta.env.VITE_API_ENDPOINT}instructor/empathy_summary?session_id=default&simulation_group_id=${encodeURIComponent(
         simulation_group_id
       )}&student_email=${encodeURIComponent(student.email)}`;
       
