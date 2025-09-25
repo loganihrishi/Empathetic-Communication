@@ -14,16 +14,16 @@ By default, the system uses **system prompt protection** which has proven effect
 4. **Description**: Brief description of purpose (e.g., Guardrail for patient simulation system)
 5. Configure your guardrail rules:
    - **Harmful category filters**: Set thresholds (MEDIUM for hate/misconduct, HIGH for violence/sexual)
-![Harmful category filters for guardrail creation](docs/images/category_creation.png)
-![Prompt attacks configuration for guardrail creation](docs/images/prompt_attacks.png)
+![Harmful category filters for guardrail creation](images/category_creation.png)
+![Prompt attacks configuration for guardrail creation](images/prompt_attacks.png)
    - **Denied topics**: Add topics like "Medical advice for my illness" (Since it is the LLM that is acting as the patient, not the user). Set the Input and Output action to "Block."
-![Denied topics for guardrail creation](docs/images/denied_topics.png)
+![Denied topics for guardrail creation](images/denied_topics.png)
    - **Word filters**: Do not add anything under "Profanity." Then under "Custom words and phrases" add phrases like "ignore all previous instructions"
-![Custom words and phrases for guardrail creation](docs/images/custom_words_phrases.png)
+![Custom words and phrases for guardrail creation](images/custom_words_phrases.png)
    - **Sensitive information filters**: Optional (not required for basic setup). You do not need to add anything for the "PII types" and "Regex patterns" sections. 
    - **Contextual grounding:** Leave Grounding check and Relevance check as "Disabled."
    - **Blocked messaging:** Type a message that will be displayed to the user if your guardrail blocks the input or the model response (e.g., "I can only discuss medical symptoms and conditions related to our patient simulation. Please ask about the patient's health concerns or symptoms.")
-![Blocking message for guardrail response](docs/images/blocked_message.png)
+![Blocking message for guardrail response](images/blocked_message.png)
 6. Click **"Create"** and note the **Guardrail ID** (format: `abc123def456`)
 
 
