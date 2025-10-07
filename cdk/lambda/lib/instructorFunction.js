@@ -369,7 +369,12 @@ exports.handler = async (event) => {
             voice_id: provided_voice_id
           } = event.queryStringParameters;
 
-          const { patient_prompt } = JSON.parse(event.body);
+          let { patient_prompt } = JSON.parse(event.body);
+          
+          // Set improved default patient prompt if not provided
+          if (!patient_prompt || patient_prompt.trim() === "") {
+            patient_prompt = "Act as a patient with the context you are given. You are interacting with a pharmacist to practice realistic patient-pharmacist communication. Engage naturally by describing your symptoms to help the pharmacist understand your condition. If the pharmacist seems uncertain, provide additional relevant information about how you're feeling. Stay in character as a patient seeking help.";
+          }
 
           try {
             // Check if a patient with the same name already exists in the simulation group
