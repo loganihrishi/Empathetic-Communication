@@ -6,65 +6,30 @@ import json
 import uuid
 import random
 import boto3
+import botocore
 from aws_sdk_bedrock_runtime.client import BedrockRuntimeClient, InvokeModelWithBidirectionalStreamOperationInput
 from aws_sdk_bedrock_runtime.models import InvokeModelWithBidirectionalStreamInputChunk, BidirectionalInputPayloadPart
-from aws_sdk_bedrock_runtime.config import Config, HTTPAuthSchemeResolver, SigV4AuthScheme
-from smithy_aws_core.credentials_resolvers.environment import EnvironmentCredentialsResolver
+from aws_sdk_bedrock_runtime.config import Config
 import langchain_chat_history
 import psycopg2
 from psycopg2 import pool
-import uuid
 from datetime import datetime
 import logging
 import requests
-from langchain_aws import BedrockEmbeddings
+from langchain_community.embeddings import BedrockEmbeddings
 from langchain_community.vectorstores import PGVector
+from voice_db_manager import voice_db_manager, get_pg_connection, return_pg_connection
+
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-# Connection pool for better performance
-pg_conn_pool = None
-from threading import Lock
-pool_lock = Lock()
 
 # Audio config
 INPUT_SAMPLE_RATE = 16000
 OUTPUT_SAMPLE_RATE = 24000
 CHANNELS = 1
 CHUNK_SIZE = 1024
-
-# STS credentials from Cognito will be passed via environment variables
-
-
-
-def get_pg_connection():
-    global pg_conn_pool
-    with pool_lock:
-        if pg_conn_pool is None:
-            secrets_client = boto3.client('secretsmanager')
-            db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-            rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
-
-            if not db_secret_name or not rds_endpoint:
-                logger.warning("Database credentials not available")
-                raise Exception("Database credentials not configured")
-
-            secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-            secret = json.loads(secret_response['SecretString'])
-
-            # Create connection pool
-            pg_conn_pool = pool.SimpleConnectionPool(
-                1, 5,  # min/max connections
-                host=rds_endpoint,
-                port=secret['port'],
-                database=secret['dbname'],
-                user=secret['username'],
-                password=secret['password']
-            )
-        
-        return pg_conn_pool.getconn()
 
 
 class NovaSonic:
@@ -103,15 +68,23 @@ class NovaSonic:
 
     def _init_client(self):
         """Initialize the Bedrock Client for Nova"""
-        config = Config(
-            endpoint_uri=f"https://bedrock-runtime.{self.region}.amazonaws.com",
-            region=self.region,
-            aws_credentials_identity_resolver=EnvironmentCredentialsResolver(),
-            http_auth_scheme_resolver=HTTPAuthSchemeResolver(),
-            http_auth_schemes={"aws.auth#sigv4": SigV4AuthScheme()},
-        )
-        self.client = BedrockRuntimeClient(config=config)
-        print(f"Initialized Bedrock client for model {self.model_id} in region {self.region}")
+        try:
+            print(f"🔧 Initializing Bedrock client for region: {self.region}", flush=True)
+            
+            # Use AWS recommended approach with updated import
+            from smithy_aws_core.identity.environment import EnvironmentCredentialsResolver
+            
+            config = Config(
+                endpoint_uri=f"https://bedrock-runtime.{self.region}.amazonaws.com",
+                region=self.region,
+                aws_credentials_identity_resolver=EnvironmentCredentialsResolver(),
+            )
+            
+            self.client = BedrockRuntimeClient(config=config)
+            print(f"✅ Initialized Bedrock client for model {self.model_id} in region {self.region}", flush=True)
+        except Exception as e:
+            print(f"❌ Failed to initialize Bedrock client: {e}", flush=True)
+            raise e
 
     async def send_event(self, event: dict):
         """
@@ -124,7 +97,7 @@ class NovaSonic:
         )
         await self.stream.input_stream.send(chunk)
 
-    def get_default_system_prompt(patient_name) -> str:
+    def get_default_system_prompt(self, patient_name) -> str:
         """
         Generate the system prompt for the patient role.
 
@@ -160,11 +133,17 @@ class NovaSonic:
         return system_prompt
 
     def get_system_prompt(self, patient_name=None, patient_prompt=None, llm_completion=None):
-        """Cached system prompt retrieval"""
+        """Cached system prompt retrieval with medical document integration using centralized connection manager"""
         if self._cached_system_prompt:
             return self._cached_system_prompt
             
         try:
+            logger.info("🔗 VOICE_SYSTEM_PROMPT: Using centralized voice connection manager")
+            
+            # Log pool status for monitoring
+            pool_status = voice_db_manager.get_pool_status()
+            logger.info(f"🔗 VOICE_POOL_STATUS: {pool_status}")
+            
             conn = get_pg_connection()
             cursor = conn.cursor()
             cursor.execute(
@@ -172,19 +151,31 @@ class NovaSonic:
             )
             result = cursor.fetchone()
             cursor.close()
-            pg_conn_pool.putconn(conn)
+            return_pg_connection(conn)
             
+            base_prompt = ""
             if result and result[0]:
-                self._cached_system_prompt = result[0]
-                return self._cached_system_prompt
+                base_prompt = result[0]
+                logger.info("🔗 VOICE_SYSTEM_PROMPT_SUCCESS: Retrieved from database")
+            else:
+                base_prompt = self.get_default_system_prompt(patient_name or self.patient_name)
+                logger.info("🔗 VOICE_SYSTEM_PROMPT_FALLBACK: Using default prompt")
+            
+            # Add medical document context if available
+            medical_context = self._get_medical_context()
+            if medical_context:
+                base_prompt += f"\n\nMEDICAL CONTEXT:\n{medical_context}"
+                logger.info("📋 VOICE: Added medical document context to system prompt")
+            
+            self._cached_system_prompt = base_prompt
+            return self._cached_system_prompt
         except Exception as e:
             logger.error(f"Error retrieving system prompt: {e}")
             
         # Fallback to default
         self._cached_system_prompt = self.get_default_system_prompt(patient_name or self.patient_name)
+        logger.info("🔗 VOICE_SYSTEM_PROMPT_FALLBACK: Using default prompt")
         return self._cached_system_prompt
-
-
 
     async def start_session(self):
         """Start a new Nova Sonic session"""
@@ -201,7 +192,6 @@ class NovaSonic:
         self.is_active = True
 
         # Send session start event
-
         # 1) sessionStart
         await self.send_event({
         "event": {
@@ -216,7 +206,6 @@ class NovaSonic:
         }
         })
 
-        
         # Send prompt start event
         voice_ids = {"feminine": ["amy", "tiffany", "lupe"], "masculine": ["matthew", "carlos"]}
         
@@ -244,7 +233,6 @@ class NovaSonic:
         }
         })
 
-
         # 3) SYSTEM contentStart
         await self.send_event({
         "event": {
@@ -261,7 +249,6 @@ class NovaSonic:
             }
         }
         })
-
 
         # Cache chat context to avoid repeated DB calls
         if not self._chat_context:
@@ -283,7 +270,6 @@ class NovaSonic:
         }
         })
 
-
         # 5) contentEnd
         await self.send_event({
         "event": {
@@ -294,15 +280,11 @@ class NovaSonic:
         }
         })
 
-
         # Start processing responses
         self.response = asyncio.create_task(self._process_responses())
 
         print(f"✅ Nova Sonic session started (Prompt ID: {self.prompt_name})", flush=True)
-        # at the end of start_session() in nova_sonic.py
         print(json.dumps({ "type": "text", "text": "Nova Sonic ready" }), flush=True)
-
-
 
     async def start_audio_input(self):
         self.audio_content_name = str(uuid.uuid4())
@@ -370,9 +352,6 @@ class NovaSonic:
             async def safe_empathy_eval():
                 try:
                     print(f"🧠 VOICE EMPATHY: Starting evaluation task", flush=True)
-                    # CRITICAL DEBUG: Log exactly what we're passing
-                    print(f"🔍 CRITICAL: About to pass to _evaluate_empathy: '{captured_user_input}'", flush=True)
-                    print(f"🔍 CRITICAL: Patient context: '{patient_context}'", flush=True)
                     result = await self._evaluate_empathy(captured_user_input, patient_context)
                     if result:
                         print(f"🧠 VOICE EMPATHY: Evaluation completed successfully", flush=True)
@@ -384,14 +363,10 @@ class NovaSonic:
             
             asyncio.create_task(safe_empathy_eval())
             
-            # CRITICAL DEBUG: Log before resetting
-            print(f"🔍 CRITICAL: About to reset _current_user_input. Current value: '{self._current_user_input}'", flush=True)
             self._current_user_input = ""  # Reset for next input
-            print(f"🔍 CRITICAL: After reset _current_user_input: '{self._current_user_input}'", flush=True)
         else:
-            print(f"🔍 DEBUG: No user input to save at audio end - Input: '{getattr(self, '_current_user_input', 'NOT_SET')}'", flush=True)
+            print(f"🔍 DEBUG: No user input to save at audio end", flush=True)
 
-    
     async def end_session(self):
         # promptEnd
         await self.send_event({
@@ -434,7 +409,6 @@ class NovaSonic:
             print(f"🧠 MANUAL EMPATHY ERROR: {e}", flush=True)
             logger.error(f"🧠 Manual empathy evaluation error: {e}")
 
-
     async def _process_responses(self):
         """Process responses from the stream, buffering partial JSON."""
         decoder = json.JSONDecoder()
@@ -473,14 +447,10 @@ class NovaSonic:
         """Dispatch one parsed JSON event to your existing logic."""
         evt = json_data.get("event", {})
         
-        # DEBUG: Log all events to see what Nova Sonic is sending
-        print(f"🔍 DEBUG EVENT: {json.dumps(evt, indent=2)}", flush=True)
-        
         # contentStart
         if "contentStart" in evt:
             content_start = evt["contentStart"]
             self.role = content_start.get("role")
-            print(f"🔍 DEBUG ROLE SET: {self.role}", flush=True)
             # optional SPECULATIVE check
             if "additionalModelFields" in content_start:
                 fields = json.loads(content_start["additionalModelFields"])
@@ -489,8 +459,6 @@ class NovaSonic:
         # textOutput
         elif "textOutput" in evt:
             text = evt["textOutput"]["content"]
-            
-            print(f"🔍 DEBUG TEXT OUTPUT - Role: {self.role}, Text: {text[:50]}...", flush=True)
             
             # Filter only the specific interrupted JSON message
             if text.strip() == '{"interrupted": true}':
@@ -506,7 +474,6 @@ class NovaSonic:
                 text += " I really appreciate your feedback. You may continue practicing with other patients. Goodbye."
             
             if self.role == "ASSISTANT":
-                print(f"🔍 DEBUG: Processing ASSISTANT message", flush=True)
                 print(f"Assistant: {text}", flush=True)
                 print(json.dumps({"type": "text", "text": text}), flush=True)
                 
@@ -515,104 +482,33 @@ class NovaSonic:
                     print(json.dumps({"type": "diagnosis_complete", "text": "Session completed successfully"}), flush=True)
 
             elif self.role == "USER":
-                print(f"🔍 DEBUG: Processing USER message - Text: {text}", flush=True)
                 print(f"User: {text}", flush=True)
                 print(json.dumps({"type": "text", "text": text}), flush=True)
                 
                 # CRITICAL FIX: Accumulate user input for empathy evaluation
                 if not hasattr(self, '_current_user_input'):
                     self._current_user_input = ""
-                    print(f"🔍 DEBUG: Initialized _current_user_input", flush=True)
                 
                 # CRITICAL: Ensure we're accumulating the actual text
                 if text and text.strip():
                     self._current_user_input += text
-                    print(f"🔍 CRITICAL: Added '{text}' to _current_user_input", flush=True)
-                    print(f"🔍 CRITICAL: _current_user_input now: '{self._current_user_input}'", flush=True)
                     print(f"🔍 DEBUG: Accumulated user input now: {len(self._current_user_input)} chars", flush=True)
-                else:
-                    print(f"🔍 WARNING: Empty or whitespace-only text, not adding to _current_user_input", flush=True)
                 
                 # CRITICAL FIX: Save USER message to database immediately
                 if text.strip():
                     print(f"💾 SAVING USER MESSAGE TO DB: {text[:50]}...", flush=True)
                     asyncio.create_task(self._save_user_message_async(text))
                     
-                    print(f"🔍 DEBUG: Starting empathy check for USER text", flush=True)
                     logger.info(f"🧠 USER MESSAGE - Checking empathy: {text[:30]}...")
                     
                     # Use the direct empathy evaluation method for voice inputs
                     patient_context = f"Patient: {self.patient_name}, Condition: {self.patient_prompt}"
-                    # CRITICAL DEBUG: Log what we're passing to empathy evaluation
-                    print(f"🔍 DEBUG: About to evaluate empathy for text: '{text}'", flush=True)
                     asyncio.create_task(self._evaluate_empathy(text, patient_context))
-                else:
-                    print(f"🔍 DEBUG: Empty USER text, skipping empathy", flush=True)
-                    logger.info(f"🧠 Empty user text, skipping empathy evaluation")
-                    # Inline diagnosis evaluation
+                    
+                    # Check for diagnosis if LLM completion is enabled
                     if self.llm_completion:
-                        try:
-                            bedrock_client = boto3.client("bedrock-runtime", region_name=self.deployment_region)
-                            # Get answer key documents from vectorstore
-                            try:
-                                # Get DB credentials from environment
-                                db_secret_name = os.getenv("SM_DB_CREDENTIALS")
-                                rds_endpoint = os.getenv("RDS_PROXY_ENDPOINT")
-                                
-                                if db_secret_name and rds_endpoint:
-                                    secrets_client = boto3.client('secretsmanager')
-                                    secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-                                    secret = json.loads(secret_response['SecretString'])
-                                    
-                                    # Create embeddings
-                                    embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
-                                    
-                                    # Connect to vectorstore
-                                    connection_string = f"postgresql://{secret['username']}:{secret['password']}@{rds_endpoint}:{secret['port']}/{secret['dbname']}"
-                                    vectorstore = PGVector(embedding_function=embeddings, collection_name=self.patient_id or 'default', connection_string=connection_string)
-                                    
-                                    # Search for relevant documents
-                                    docs = vectorstore.similarity_search(text, k=3)
-                                    doc_content = "\n".join([doc.page_content for doc in docs])
-                                    
-                                    prompt = f"""You are to answer the following question, and you MUST answer only one word which is either 'True' or 'False' with that exact wording, no extra words, only one of those. INFORMATION FOR THE QUESTION TO ANSWER: Based on the medical documents provided, is the student's diagnosis correct? Student said: {text}. Medical documents: {doc_content}"""
-                                else:
-                                    prompt = f"""You are to answer the following question, and you MUST answer only one word which is either 'True' or 'False' with that exact wording, no extra words, only one of those. INFORMATION FOR THE QUESTION TO ANSWER: Is the student's diagnosis correct? Student said: {text}."""
-                            except Exception as vec_error:
-                                logger.error(f"Vectorstore query failed: {vec_error}")
-                                prompt = f"""You are to answer the following question, and you MUST answer only one word which is either 'True' or 'False' with that exact wording, no extra words, only one of those. INFORMATION FOR THE QUESTION TO ANSWER: Is the student's diagnosis correct? Student said: {text}."""
-                            body = {"messages": [{"role": "user", "content": [{"text": prompt}]}], "inferenceConfig": {"temperature": 0.1}}
-                            response = bedrock_client.invoke_model(modelId="amazon.nova-lite-v1:0", contentType="application/json", accept="application/json", body=json.dumps(body))
-                            result = json.loads(response["body"].read())
-                            verdict_text = result["output"]["message"]["content"][0]["text"].strip()
-                            print(f"🩺 Diagnosis verdict: {verdict_text}", flush=True)
-                            if verdict_text.lower() == "true":
-                                print(json.dumps({"type": "diagnosis_verdict", "verdict": True}), flush=True)
-                                # Send completion message to Nova Sonic
-                                completion_msg = "SESSION COMPLETED. I really appreciate your feedback. You may continue practicing with other patients. Goodbye."
-                                print(json.dumps({"type": "text", "text": completion_msg}), flush=True)
-                        except Exception as e:
-                            logger.error(f"Diagnosis evaluation failed: {e}")
-                            # Fallback to us-east-1 for Nova models if deployment region fails
-                            if self.deployment_region != 'us-east-1':
-                                try:
-                                    logger.info(f"Retrying diagnosis evaluation with us-east-1 fallback")
-                                    bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
-                                    body = {"messages": [{"role": "user", "content": [{"text": prompt}]}], "inferenceConfig": {"temperature": 0.1}}
-                                    response = bedrock_client.invoke_model(modelId="amazon.nova-lite-v1:0", contentType="application/json", accept="application/json", body=json.dumps(body))
-                                    result = json.loads(response["body"].read())
-                                    verdict_text = result["output"]["message"]["content"][0]["text"].strip()
-                                    if verdict_text.lower() == "true":
-                                        print(json.dumps({"type": "diagnosis_verdict", "verdict": True}), flush=True)
-                                        completion_msg = "SESSION COMPLETED. I really appreciate your feedback. You may continue practicing with other patients. Goodbye."
-                                        print(json.dumps({"type": "text", "text": completion_msg}), flush=True)
-                                except Exception as fallback_error:
-                                    logger.error(f"Fallback diagnosis evaluation also failed: {fallback_error}")
-                    # Skip diagnosis evaluation for now
-                    # if self.llm_completion:
-                    #     asyncio.create_task(self._evaluate_diagnosis_async(text))
+                        asyncio.create_task(self._evaluate_diagnosis_async(text))
 
-            print(f"🔍 DEBUG: Final role processing - Role: {self.role}, Text length: {len(text)}", flush=True)
             logger.info(f"💬 [add_message] {self.role.upper()} | {self.session_id} | {text[:30]}")
 
             # Mirror to PostgreSQL
@@ -644,8 +540,6 @@ class NovaSonic:
                 "size": len(audio_bytes)
             }), flush=True)
 
-        # else: ignore other event types
-    
     def _get_bedrock_client(self):
         """Cached bedrock client"""
         if not self._bedrock_client:
@@ -653,27 +547,16 @@ class NovaSonic:
         return self._bedrock_client
     
     def _get_empathy_prompt(self):
-        """Retrieve the latest empathy prompt from the empathy_prompt_history table."""
+        """Retrieve the latest empathy prompt from the empathy_prompt_history table using centralized connection manager."""
         try:
             logger.info("🔍 VOICE: RETRIEVING EMPATHY PROMPT FROM DATABASE")
-            secrets_client = boto3.client('secretsmanager')
-            db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-            rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
-
-            if not db_secret_name or not rds_endpoint:
-                logger.warning("Database credentials not available for empathy prompt retrieval")
-                return self._get_default_empathy_prompt()
-
-            secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-            secret = json.loads(secret_response['SecretString'])
-
-            conn = psycopg2.connect(
-                host=rds_endpoint,
-                port=secret['port'],
-                database=secret['dbname'],
-                user=secret['username'],
-                password=secret['password']
-            )
+            logger.info("🔗 VOICE_EMPATHY_PROMPT: Using centralized voice connection manager")
+            
+            # Log pool status for monitoring
+            pool_status = voice_db_manager.get_pool_status()
+            logger.info(f"🔗 VOICE_POOL_STATUS: {pool_status}")
+            
+            conn = get_pg_connection()
             cursor = conn.cursor()
 
             cursor.execute(
@@ -682,7 +565,7 @@ class NovaSonic:
             
             result = cursor.fetchone()
             cursor.close()
-            conn.close()
+            return_pg_connection(conn)
 
             if result and result[0]:
                 prompt_content = result[0]
@@ -818,10 +701,6 @@ Provide structured evaluation with detailed justifications for each score.
 }}
 """
     
-
-    
-
-    
     async def _save_user_message_async(self, user_text):
         """Save user message to database asynchronously"""
         try:
@@ -840,10 +719,6 @@ Provide structured evaluation with detailed justifications for each score.
         """LLM-as-a-Judge empathy evaluation using admin-controlled prompt system"""
         print(f"🧠 VOICE: _evaluate_empathy CALLED with response: {student_response[:50]}...", flush=True)
         logger.info(f"🧠 VOICE: Starting empathy evaluation for: {student_response[:30]}...")
-        
-        # CRITICAL DEBUG: Log the raw inputs first
-        logger.info(f"🔍 VOICE: RAW STUDENT RESPONSE: '{student_response}'")
-        logger.info(f"🔍 VOICE: RAW PATIENT CONTEXT: '{patient_context}'")
         
         # Basic validation and sanitization
         if not student_response:
@@ -866,11 +741,6 @@ Provide structured evaluation with detailed justifications for each score.
             patient_context = "General patient interaction"
             logger.warning(f"⚠️ VOICE: Using default patient context")
             
-        # CRITICAL DEBUG: Log the cleaned inputs
-        logger.info(f"🔍 VOICE: CLEANED STUDENT RESPONSE: '{student_response}'")
-        logger.info(f"🔍 VOICE: CLEANED PATIENT CONTEXT: '{patient_context}'")
-        logger.info(f"🔍 VOICE: RESPONSE LENGTH: {len(student_response)} characters")
-        
         try:
             print(f"🧠 VOICE: Creating bedrock client for region: {self.deployment_region or 'us-east-1'}", flush=True)
             bedrock_client = boto3.client("bedrock-runtime", region_name=self.deployment_region or 'us-east-1')
@@ -878,18 +748,6 @@ Provide structured evaluation with detailed justifications for each score.
             # Get admin-controlled empathy prompt (same as chat.py)
             empathy_prompt_template = self._get_empathy_prompt()
             logger.info(f"🎯 VOICE: EMPATHY PROMPT LENGTH: {len(empathy_prompt_template)} characters")
-            
-            # CRITICAL DEBUG: Log the exact inputs being used for evaluation
-            logger.info(f"🔍 VOICE: FINAL PATIENT CONTEXT: {patient_context}")
-            logger.info(f"🔍 VOICE: FINAL USER TEXT TO EVALUATE: '{student_response}'")
-            logger.info(f"🔍 VOICE: FINAL USER TEXT LENGTH: {len(student_response)} characters")
-            
-            # CRITICAL: Final validation before processing
-            if len(student_response.strip()) == 0:
-                logger.error(f"❌ VOICE: STUDENT RESPONSE IS EMPTY AFTER FINAL STRIP")
-                return None
-                
-            logger.info(f"✅ VOICE: PROCEEDING WITH EVALUATION - Response: '{student_response[:100]}...'")
             
             try:
                 evaluation_prompt = empathy_prompt_template.format(
@@ -901,13 +759,8 @@ Provide structured evaluation with detailed justifications for each score.
                 # CRITICAL VALIDATION: Ensure the user text was actually substituted
                 if student_response not in evaluation_prompt:
                     logger.error(f"❌ VOICE: USER TEXT NOT FOUND IN FORMATTED PROMPT - This will cause hallucination!")
-                    logger.error(f"❌ VOICE: Expected to find: '{student_response}'")
                     return None
                     
-                # CRITICAL DEBUG: Log a sample of the formatted prompt to verify user text is included
-                prompt_sample = evaluation_prompt[-500:] if len(evaluation_prompt) > 500 else evaluation_prompt
-                logger.info(f"🔍 VOICE: PROMPT SAMPLE (last 500 chars): {prompt_sample}")
-                logger.info(f"✅ VOICE: CONFIRMED USER TEXT IS IN PROMPT")
             except Exception as format_error:
                 logger.error(f"❌ VOICE: ADMIN PROMPT FORMATTING ERROR: {format_error}")
                 logger.error(f"❌ VOICE: FALLING BACK TO DEFAULT EMPATHY PROMPT")
@@ -924,10 +777,6 @@ Provide structured evaluation with detailed justifications for each score.
                         logger.error(f"❌ VOICE: USER TEXT NOT FOUND IN DEFAULT PROMPT EITHER")
                         return None
                         
-                    # CRITICAL DEBUG: Also log default prompt sample
-                    prompt_sample = evaluation_prompt[-500:] if len(evaluation_prompt) > 500 else evaluation_prompt
-                    logger.info(f"🔍 VOICE: DEFAULT PROMPT SAMPLE: {prompt_sample}")
-                    logger.info(f"✅ VOICE: CONFIRMED USER TEXT IS IN DEFAULT PROMPT")
                 except Exception as default_error:
                     logger.error(f"❌ VOICE: DEFAULT PROMPT ALSO FAILED: {default_error}")
                     return None
@@ -1030,6 +879,163 @@ Provide structured evaluation with detailed justifications for each score.
                 logger.error(f"🧠 VOICE: Failed to save message as fallback: {save_error}")
             return None
     
+    def _get_medical_context(self):
+        """Retrieve medical document context from vectorstore using RDS proxy"""
+        try:
+            if not self.patient_id:
+                return None
+                
+            logger.info(f"📋 VOICE: Retrieving medical context for patient_id: {self.patient_id}")
+            
+            # Get RDS proxy connection details
+            conn = get_pg_connection()
+            cursor = conn.cursor()
+            
+            # Get connection details for vectorstore
+            db_secret_name = os.getenv("SM_DB_CREDENTIALS")
+            rds_endpoint = os.getenv("RDS_PROXY_ENDPOINT")
+            
+            if not db_secret_name or not rds_endpoint:
+                logger.warning("📋 VOICE: Database credentials not available for medical context")
+                cursor.close()
+                return_pg_connection(conn)
+                return None
+            
+            cursor.close()
+            return_pg_connection(conn)
+            
+            # Get database credentials
+            secrets_client = boto3.client('secretsmanager')
+            secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
+            secret = json.loads(secret_response['SecretString'])
+            
+            # Create embeddings and vectorstore connection
+            bedrock_client = self._get_bedrock_client()
+            embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
+            
+            connection_string = f"postgresql://{secret['username']}:{secret['password']}@{rds_endpoint}:{secret['port']}/{secret['dbname']}"
+            vectorstore = PGVector(embedding_function=embeddings, collection_name=self.patient_id, connection_string=connection_string)
+            
+            # Get relevant medical documents (general query for patient context)
+            try:
+                docs = vectorstore.similarity_search(f"patient medical history symptoms condition", k=3)
+                
+                if docs and len(docs) > 0:
+                    # Filter out empty documents
+                    valid_docs = [doc for doc in docs if doc.page_content and doc.page_content.strip()]
+                    
+                    if valid_docs:
+                        medical_context = "\n".join([doc.page_content for doc in valid_docs])
+                        logger.info(f"📋 VOICE: Retrieved {len(valid_docs)} valid medical documents")
+                        return medical_context[:1000]  # Limit context size
+                    else:
+                        logger.info("📋 VOICE: Found documents but all were empty")
+                        return None
+                else:
+                    logger.info("📋 VOICE: No medical documents found in vectorstore")
+                    return None
+            except Exception as search_error:
+                logger.error(f"📋 VOICE: Vectorstore search failed: {search_error}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"📋 VOICE: Error retrieving medical context: {e}")
+            # Don't crash voice session if medical context fails
+            logger.info("📋 VOICE: Continuing without medical context")
+            return None
+    
+    async def _evaluate_diagnosis_async(self, text):
+        """Evaluate diagnosis using medical documents from vectorstore"""
+        try:
+            logger.info(f"🩺 VOICE: Starting diagnosis evaluation for: {text[:30]}...")
+            
+            if not self.patient_id:
+                logger.warning("🩺 VOICE: No patient_id available for diagnosis evaluation")
+                return
+            
+            # Get database connection details
+            db_secret_name = os.getenv("SM_DB_CREDENTIALS")
+            rds_endpoint = os.getenv("RDS_PROXY_ENDPOINT")
+            
+            if not db_secret_name or not rds_endpoint:
+                logger.warning("🩺 VOICE: Database credentials not available for diagnosis")
+                return
+            
+            # Get database credentials
+            secrets_client = boto3.client('secretsmanager')
+            secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
+            secret = json.loads(secret_response['SecretString'])
+            
+            # Create bedrock client and embeddings
+            bedrock_client = boto3.client("bedrock-runtime", region_name=self.deployment_region or 'us-east-1')
+            embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", client=bedrock_client)
+            
+            # Connect to vectorstore using RDS proxy
+            connection_string = f"postgresql://{secret['username']}:{secret['password']}@{rds_endpoint}:{secret['port']}/{secret['dbname']}"
+            vectorstore = PGVector(embedding_function=embeddings, collection_name=self.patient_id, connection_string=connection_string)
+            
+            # Search for relevant medical documents
+            try:
+                docs = vectorstore.similarity_search(text, k=3)
+                
+                if docs and len(docs) > 0:
+                    # Filter out empty documents
+                    valid_docs = [doc for doc in docs if doc.page_content and doc.page_content.strip()]
+                    doc_content = "\n".join([doc.page_content for doc in valid_docs]) if valid_docs else ""
+                    logger.info(f"🩺 VOICE: Found {len(valid_docs)} valid documents for diagnosis")
+                else:
+                    doc_content = ""
+                    logger.info("🩺 VOICE: No documents found for diagnosis evaluation")
+            except Exception as search_error:
+                logger.error(f"🩺 VOICE: Document search failed: {search_error}")
+                doc_content = ""
+            
+            # Create diagnosis evaluation prompt
+            if doc_content:
+                prompt = f"""You are to answer the following question, and you MUST answer only one word which is either 'True' or 'False' with that exact wording, no extra words, only one of those. INFORMATION FOR THE QUESTION TO ANSWER: Based on the medical documents provided, is the student's diagnosis correct? Student said: {text}. Medical documents: {doc_content}"""
+            else:
+                prompt = f"""You are to answer the following question, and you MUST answer only one word which is either 'True' or 'False' with that exact wording, no extra words, only one of those. INFORMATION FOR THE QUESTION TO ANSWER: Is the student's diagnosis correct? Student said: {text}."""
+            
+            # Call Nova Lite for diagnosis evaluation
+            body = {
+                "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                "inferenceConfig": {"temperature": 0.1}
+            }
+            
+            try:
+                response = bedrock_client.invoke_model(
+                    modelId="amazon.nova-lite-v1:0",
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(body)
+                )
+                logger.info("✅ VOICE: DIAGNOSIS MODEL CALL SUCCESSFUL")
+            except Exception as model_error:
+                logger.warning(f"🩺 VOICE: Nova Lite failed in deployment region, trying us-east-1: {model_error}")
+                fallback_client = boto3.client("bedrock-runtime", region_name="us-east-1")
+                response = fallback_client.invoke_model(
+                    modelId="amazon.nova-lite-v1:0",
+                    contentType="application/json",
+                    accept="application/json",
+                    body=json.dumps(body)
+                )
+                logger.info("✅ VOICE: DIAGNOSIS FALLBACK CALL SUCCESSFUL")
+            
+            result = json.loads(response["body"].read())
+            verdict_text = result["output"]["message"]["content"][0]["text"].strip()
+            
+            logger.info(f"🩺 VOICE: Diagnosis verdict: {verdict_text}")
+            print(f"🩺 Diagnosis verdict: {verdict_text}", flush=True)
+            
+            if verdict_text.lower() == "true":
+                print(json.dumps({"type": "diagnosis_verdict", "verdict": True}), flush=True)
+                logger.info("🩺 VOICE: Correct diagnosis detected - session completion triggered")
+                
+        except Exception as e:
+            logger.error(f"🩺 VOICE: Diagnosis evaluation error: {e}")
+            # Don't crash the voice session if diagnosis evaluation fails
+            logger.info("🩺 VOICE: Continuing voice session despite diagnosis evaluation failure")
+    
     def _build_empathy_feedback(self, empathy_result):
         """Build formatted empathy feedback for display"""
         try:
@@ -1084,10 +1090,11 @@ Provide structured evaluation with detailed justifications for each score.
             return None
     
     def _save_message_to_db(self, session_id, is_student, content, empathy_data):
-        """Save message to database with enhanced error handling and logging"""
+        """Save message to database using centralized voice connection manager"""
         try:
             print(f"💾 DB SAVE: Starting save - Student: {is_student}, Content: {content[:50]}...", flush=True)
             logger.info(f"💾 Starting DB save for {'student' if is_student else 'assistant'} message")
+            logger.info("🔗 VOICE_DB_SAVE: Using centralized voice connection manager")
             
             conn = get_pg_connection()
             cursor = conn.cursor()
@@ -1110,10 +1117,10 @@ Provide structured evaluation with detailed justifications for each score.
             
             conn.commit()
             cursor.close()
-            pg_conn_pool.putconn(conn)
+            return_pg_connection(conn)
             
-            print(f"✅ DB SAVE COMPLETE: Message saved to database", flush=True)
-            logger.info(f"💾 Message saved to DB")
+            print(f"✅ DB SAVE COMPLETE: Message saved to database using voice connection manager", flush=True)
+            logger.info(f"💾 Message saved to DB using voice connection manager")
             
             # Also save to PostgreSQL chat history
             try:
