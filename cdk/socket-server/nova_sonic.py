@@ -71,7 +71,7 @@ class NovaSonic:
         try:
             print(f"🔧 Initializing Bedrock client for region: {self.region}", flush=True)
             
-            # Use AWS recommended approach with updated import
+            # Use AWS recommended approach with updated import for EnvironmentCredentialsResolver
             from smithy_aws_core.identity.environment import EnvironmentCredentialsResolver
             
             config = Config(

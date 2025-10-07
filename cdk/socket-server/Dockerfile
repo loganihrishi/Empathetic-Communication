@@ -12,7 +12,11 @@ RUN npm install
 # Copy Python files and install requirements
 COPY *.py ./
 COPY requirements.txt ./
-RUN pip3 install --break-system-packages -r requirements.txt
+
+# Upgrade pip and setuptools, clear cache, then install requirements
+RUN pip3 install --break-system-packages --upgrade pip setuptools && \
+    pip3 cache purge && \
+    pip3 install --break-system-packages -r requirements.txt
 
 # Copy server files
 COPY server.js ./
