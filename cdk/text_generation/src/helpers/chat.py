@@ -672,11 +672,19 @@ def get_response(
     
     if stream:
         save_message_to_db(session_id, False, response, None)
-        return {"llm_output": response, "session_name": "Chat", "llm_verdict": False}
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_name = f"{patient_name}_{timestamp}"
+        return {"llm_output": response, "session_name": session_name, "llm_verdict": False}
     
     result = get_llm_output(response, llm_completion, empathy_feedback)
     if empathy_evaluation:
         result["empathy_evaluation"] = empathy_evaluation
+    
+    # Generate proper session name
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    result["session_name"] = f"{patient_name}_{timestamp}"
     
     save_message_to_db(session_id, False, result["llm_output"], None)
     
