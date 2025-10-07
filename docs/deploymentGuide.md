@@ -72,7 +72,7 @@ First, navigate to Amazon Bedrock in the AWS Console. From the home page, click 
 Then click on "Modify model access":
 ![](./images/modifymodels.png)
 
-Finally, enable the relevant models, click next and on the next page click submit. Amazon Titan Embeddings V2 and Meta Llama 3 70B Instruct are required for this project.
+Finally, enable the relevant models, click next and on the next page click submit. Enable `Amazon Titan Embeddings V2`, `Meta Llama 3 70B Instruct`, since they are required for this project. Then, within the `us-east-1` region enable `Nova Pro` for the empathy coach and `Nova Sonic` for the voice feature.
 ![](./images/enablemodels.png)
 
 The relevant models are now enabled in Bedrock.
