@@ -378,7 +378,7 @@ def handler(event, context):
     try:
         logger.info("Updating session name if this is the first exchange between the LLM and student")
         potential_session_name = update_session_name(
-            TABLE_NAME, session_id, BEDROCK_LLM_ID)
+            TABLE_NAME, session_id, BEDROCK_LLM_ID, patient_name)
         if potential_session_name:
             logger.info("This is the first exchange between the LLM and student. Updating session name.")
             session_name = potential_session_name

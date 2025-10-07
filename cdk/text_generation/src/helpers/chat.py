@@ -1,6 +1,7 @@
 import boto3, re, json, logging
 import psycopg2
 import os
+from .db_connection_manager import get_db_cursor, get_pool_status
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -131,37 +132,18 @@ def get_default_system_prompt(patient_name) -> str:
 
 def get_system_prompt(patient_name) -> str:
     """
-    Retrieve the latest system prompt from the system_prompt_history table in PostgreSQL.
+    Retrieve the latest system prompt from the system_prompt_history table using centralized connection manager.
     Returns the latest system prompt, or default if not found.
     """
     try:
-        secrets_client = boto3.client('secretsmanager')
-        db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-        rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
-
-        if not db_secret_name or not rds_endpoint:
-            logger.warning("Database credentials not available for system prompt retrieval")
-            return get_default_system_prompt(patient_name=patient_name)
-
-        secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-        secret = json.loads(secret_response['SecretString'])
-
-        conn = psycopg2.connect(
-            host=rds_endpoint,
-            port=secret['port'],
-            database=secret['dbname'],
-            user=secret['username'],
-            password=secret['password']
-        )
-        cursor = conn.cursor()
-
-        cursor.execute(
-            'SELECT prompt_content FROM system_prompt_history ORDER BY created_at DESC LIMIT 1'
-        )
+        logger.info("🔗 DB_SYSTEM_PROMPT: Using centralized connection manager")
         
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                'SELECT prompt_content FROM system_prompt_history ORDER BY created_at DESC LIMIT 1'
+            )
+            
+            result = cursor.fetchone()
 
         if result and result[0]:
             return result[0]
@@ -267,36 +249,21 @@ Provide structured evaluation with detailed justifications for each score.
 """
 
 def get_empathy_prompt() -> str:
-    """Retrieve the latest empathy prompt from the empathy_prompt_history table."""
+    """Retrieve the latest empathy prompt from the empathy_prompt_history table using centralized connection manager."""
     try:
         logger.info("🔍 RETRIEVING EMPATHY PROMPT FROM DATABASE")
-        secrets_client = boto3.client('secretsmanager')
-        db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-        rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
-
-        if not db_secret_name or not rds_endpoint:
-            logger.warning("Database credentials not available for empathy prompt retrieval")
-            return get_default_empathy_prompt()
-
-        secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-        secret = json.loads(secret_response['SecretString'])
-
-        conn = psycopg2.connect(
-            host=rds_endpoint,
-            port=secret['port'],
-            database=secret['dbname'],
-            user=secret['username'],
-            password=secret['password']
-        )
-        cursor = conn.cursor()
-
-        cursor.execute(
-            'SELECT prompt_content, created_at FROM empathy_prompt_history ORDER BY created_at DESC LIMIT 1'
-        )
+        logger.info("🔗 DB_EMPATHY_PROMPT: Using centralized connection manager")
         
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        # Log pool status for monitoring
+        pool_status = get_pool_status()
+        logger.info(f"🔗 DB_POOL_STATUS: {pool_status}")
+        
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                'SELECT prompt_content, created_at FROM empathy_prompt_history ORDER BY created_at DESC LIMIT 1'
+            )
+            
+            result = cursor.fetchone()
 
         if result and result[0]:
             prompt_content = result[0]
@@ -316,7 +283,7 @@ def get_empathy_prompt() -> str:
                 logger.info("🔧 FIXING ADMIN PROMPT JSON FORMATTING")
                 # Find JSON template section and fix braces
                 import re
-                json_pattern = r'(\{[^{}]*"empathy_score"[^{}]*\})'  
+                json_pattern = r'(\\{[^{}]*"empathy_score"[^{}]*\\})'  
                 def fix_braces(match):
                     json_str = match.group(1)
                     # Replace single braces with double braces for literal JSON
@@ -462,7 +429,7 @@ def get_empathy_level_name(score: int) -> str:
 def build_empathy_feedback(evaluation):
     """Build formatted empathy feedback from evaluation dict."""
     if not evaluation:
-        return "**Empathy Coach:** System temporarily unavailable.\\n"
+        return "**Empathy Coach:** System temporarily unavailable.\\\\n"
 
     pt_score = evaluation.get('perspective_taking', 3)
     er_score = evaluation.get('emotional_resonance', 3)
@@ -476,7 +443,7 @@ def build_empathy_feedback(evaluation):
     realism_flag = evaluation.get('realism_flag', 'unknown')
     feedback = evaluation.get('feedback', '')
     
-    empathy_feedback = f"**Empathy Coach:**\\n\\n"
+    empathy_feedback = f"**Empathy Coach:**\\\\n\\\\n"
     
     if overall_score == 1:
         stars = "⭐ (1/5)"
@@ -494,71 +461,71 @@ def build_empathy_feedback(evaluation):
     realism_icon = "✅" if realism_flag != "unrealistic" else ""
         
     overall_level = get_empathy_level_name(overall_score)
-    empathy_feedback += f"**Overall Empathy Score:** {overall_level} {stars}\\n\\n"
+    empathy_feedback += f"**Overall Empathy Score:** {overall_level} {stars}\\\\n\\\\n"
     
-    empathy_feedback += f"**Category Breakdown:**\\n"
+    empathy_feedback += f"**Category Breakdown:**\\\\n"
     
     pt_level = get_empathy_level_name(pt_score)
     pt_stars = "⭐" * pt_score + f" ({pt_score}/5)"
-    empathy_feedback += f"• Perspective-Taking: {pt_level} {pt_stars}\\n"
+    empathy_feedback += f"• Perspective-Taking: {pt_level} {pt_stars}\\\\n"
     
     er_level = get_empathy_level_name(er_score)
     er_stars = "⭐" * er_score + f" ({er_score}/5)"
-    empathy_feedback += f"• Emotional Resonance/Compassionate Care: {er_level} {er_stars}\\n"
+    empathy_feedback += f"• Emotional Resonance/Compassionate Care: {er_level} {er_stars}\\\\n"
     
     ack_level = get_empathy_level_name(ack_score)
     ack_stars = "⭐" * ack_score + f" ({ack_score}/5)"
-    empathy_feedback += f"• Acknowledgment of Patient's Experience: {ack_level} {ack_stars}\\n"
+    empathy_feedback += f"• Acknowledgment of Patient's Experience: {ack_level} {ack_stars}\\\\n"
     
     lang_level = get_empathy_level_name(lang_score)
     lang_stars = "⭐" * lang_score + f" ({lang_score}/5)"
-    empathy_feedback += f"• Language & Communication: {lang_level} {lang_stars}\\n\\n"
+    empathy_feedback += f"• Language & Communication: {lang_level} {lang_stars}\\\\n\\\\n"
     
     cognitive_level = get_empathy_level_name(cognitive_score)
     affective_level = get_empathy_level_name(affective_score)
     cognitive_stars = "⭐" * cognitive_score + f" ({cognitive_score}/5)"
     affective_stars = "⭐" * affective_score + f" ({affective_score}/5)"
     
-    empathy_feedback += f"**Empathy Type Analysis:**\\n"
-    empathy_feedback += f"• Cognitive Empathy (Understanding): {cognitive_level} {cognitive_stars}\\n"
-    empathy_feedback += f"• Affective Empathy (Feeling): {affective_level} {affective_stars}\\n\\n"
+    empathy_feedback += f"**Empathy Type Analysis:**\\\\n"
+    empathy_feedback += f"• Cognitive Empathy (Understanding): {cognitive_level} {cognitive_stars}\\\\n"
+    empathy_feedback += f"• Affective Empathy (Feeling): {affective_level} {affective_stars}\\\\n\\\\n"
     
-    empathy_feedback += f"**Realism Assessment:** Your response is {realism_flag} {realism_icon}\\n\\n"
+    empathy_feedback += f"**Realism Assessment:** Your response is {realism_flag} {realism_icon}\\\\n\\\\n"
     
     judge_reasoning = evaluation.get('judge_reasoning', {})
     if judge_reasoning and 'overall_assessment' in judge_reasoning:
-        empathy_feedback += f"**Coach Assessment:**\\n"
+        empathy_feedback += f"**Coach Assessment:**\\\\n"
         assessment = judge_reasoning['overall_assessment']
         assessment = assessment.replace("The student's response", "Your response")
         assessment = assessment.replace("The student", "You")
         assessment = assessment.replace("demonstrates", "show")
         assessment = assessment.replace("fails to", "could better")
         assessment = assessment.replace("lacks", "would benefit from more")
-        empathy_feedback += f"{assessment}\\n\\n"
+        empathy_feedback += f"{assessment}\\\\n\\\\n"
     
     if feedback and isinstance(feedback, dict):
         if 'strengths' in feedback and feedback['strengths']:
-            empathy_feedback += f"**Strengths:**\\n"
+            empathy_feedback += f"**Strengths:**\\\\n"
             for strength in feedback['strengths']:
-                empathy_feedback += f"• {strength}\\n"
-            empathy_feedback += "\\n"
+                empathy_feedback += f"• {strength}\\\\n"
+            empathy_feedback += "\\\\n"
         
         if 'areas_for_improvement' in feedback and feedback['areas_for_improvement']:
-            empathy_feedback += f"**Areas for improvement:**\\n"
+            empathy_feedback += f"**Areas for improvement:**\\\\n"
             for area in feedback['areas_for_improvement']:
-                empathy_feedback += f"• {area}\\n"
-            empathy_feedback += "\\n"
+                empathy_feedback += f"• {area}\\\\n"
+            empathy_feedback += "\\\\n"
         
         if 'improvement_suggestions' in feedback and feedback['improvement_suggestions']:
-            empathy_feedback += f"**Coach Recommendations:**\\n"
+            empathy_feedback += f"**Coach Recommendations:**\\\\n"
             for suggestion in feedback['improvement_suggestions']:
-                empathy_feedback += f"• {suggestion}\\n"
-            empathy_feedback += "\\n"
+                empathy_feedback += f"• {suggestion}\\\\n"
+            empathy_feedback += "\\\\n"
         
         if 'alternative_phrasing' in feedback and feedback['alternative_phrasing']:
-            empathy_feedback += f"**Coach-Recommended Approach:** *{feedback['alternative_phrasing']}*\\n\\n"
+            empathy_feedback += f"**Coach-Recommended Approach:** *{feedback['alternative_phrasing']}*\\\\n\\\\n"
     
-    empathy_feedback += "---\\n\\n"
+    empathy_feedback += "---\\\\n\\\\n"
     return empathy_feedback
 
 def get_response(
@@ -635,8 +602,8 @@ def get_response(
         """
     )
 
-    print(f"🔍 System prompt for {patient_name}:\\n{system_prompt}")
-    logger.info(f"🔍 System prompt, {patient_name}:\\n{system_prompt}")
+    print(f"🔍 System prompt for {patient_name}:\\\\n{system_prompt}")
+    logger.info(f"🔍 System prompt, {patient_name}:\\\\n{system_prompt}")
     
     qa_prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
@@ -876,33 +843,9 @@ def publish_to_appsync(session_id: str, data: dict):
         logger.exception("Full AppSync error:")
 
 def save_message_to_db(session_id: str, student_sent: bool, message_content: str, empathy_evaluation: dict = None):
-    """Save message with empathy evaluation to PostgreSQL messages table."""
+    """Save message with empathy evaluation to PostgreSQL messages table using centralized connection manager."""
     try:
-        import psycopg2
-        import json
-        import os
-        import boto3
-        
-        secrets_client = boto3.client('secretsmanager')
-        db_secret_name = os.environ.get('SM_DB_CREDENTIALS')
-        rds_endpoint = os.environ.get('RDS_PROXY_ENDPOINT')
-        
-        if not db_secret_name or not rds_endpoint:
-            logger.warning("Database credentials not available for message storage")
-            return
-            
-        secret_response = secrets_client.get_secret_value(SecretId=db_secret_name)
-        secret = json.loads(secret_response['SecretString'])
-        
-        conn = psycopg2.connect(
-            host=rds_endpoint,
-            port=secret['port'],
-            database=secret['dbname'],
-            user=secret['username'],
-            password=secret['password']
-        )
-        
-        cursor = conn.cursor()
+        logger.info("🔗 DB_SAVE_MESSAGE: Using centralized connection manager")
         
         empathy_json = json.dumps(empathy_evaluation) if empathy_evaluation else None
         if empathy_evaluation:
@@ -911,18 +854,17 @@ def save_message_to_db(session_id: str, student_sent: bool, message_content: str
             logger.info(f"💾 Perspective taking in DB save: {empathy_evaluation.get('perspective_taking')}")
             logger.info(f"💾 Emotional resonance in DB save: {empathy_evaluation.get('emotional_resonance')}")
         
-        cursor.execute(
-            'INSERT INTO "messages" (session_id, student_sent, message_content, empathy_evaluation, time_sent) VALUES (%s, %s, %s, %s, NOW())',
-            (session_id, student_sent, message_content, empathy_json)
-        )
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                'INSERT INTO "messages" (session_id, student_sent, message_content, empathy_evaluation, time_sent) VALUES (%s, %s, %s, %s, NOW())',
+                (session_id, student_sent, message_content, empathy_json)
+            )
         
         if empathy_evaluation:
             logger.info(f"🧠 Empathy data saved: {json.dumps(empathy_evaluation)[:100]}...")
             logger.info(f"🧠 Saved empathy scores - PT: {empathy_evaluation.get('perspective_taking')}, ER: {empathy_evaluation.get('emotional_resonance')}")
+        
+        logger.info("🔗 DB_MESSAGE_SAVED: Message successfully saved using connection manager")
         
     except Exception as e:
         logger.error(f"Error saving message to database: {e}")
@@ -971,11 +913,10 @@ def split_into_sentences(paragraph: str) -> list[str]:
     sentences = re.split(sentence_endings, paragraph)
     return sentences
 
-def update_session_name(table_name: str, session_id: str, bedrock_llm_id: str) -> str:
+def update_session_name(table_name: str, session_id: str, bedrock_llm_id: str, patient_name: str = None) -> str:
     """
-    Check if both the LLM and the student have exchanged exactly one message each.
-    If so, generate and return a session name using the content of the student's first message
-    and the LLM's first response. Otherwise, return None.
+    Generate session name after first real medical exchange using patient_name_[timestamp] format.
+    Looks for: 1 AI intro + 1 student response + 1 AI response (1 human, 2 AI total).
     """
     
     dynamodb_client = boto3.client("dynamodb")
@@ -1003,44 +944,28 @@ def update_session_name(table_name: str, session_id: str, bedrock_llm_id: str) -
         
         if message_type == 'human':
             human_messages.append(item)
-            if len(human_messages) > 2:
-                print("More than one student message found; not the first exchange.")
+            if len(human_messages) > 1:
+                print("More than one student message found; past naming window.")
                 return None
         
         elif message_type == 'ai':
             ai_messages.append(item)
             if len(ai_messages) > 2:
-                print("More than one AI message found; not the first exchange.")
+                print("More than two AI messages found; past naming window.")
                 return None
 
-    if len(human_messages) != 2 or len(ai_messages) != 2:
-        print("Not a complete first exchange between the LLM and student.")
+    # Check if this is the right moment: 1 human message, 2 AI messages
+    if len(human_messages) != 1 or len(ai_messages) != 2:
+        print(f"Not the naming moment - Human: {len(human_messages)}, AI: {len(ai_messages)}")
         return None
     
-    student_message = human_messages[0].get('M', {}).get('data', {}).get('M', {}).get('content', {}).get('S', "")
-    llm_message = ai_messages[0].get('M', {}).get('data', {}).get('M', {}).get('content', {}).get('S', "")
+    # Generate timestamp-based session name
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    llm = BedrockLLM(model_id = bedrock_llm_id)
+    if patient_name:
+        session_name = f"{patient_name}_{timestamp}"
+    else:
+        session_name = f"Chat_{timestamp}"
     
-    system_prompt = """
-        You are given the first message from an AI and the first message from a student in a conversation. 
-        Based on these two messages, come up with a name that describes the conversation. 
-        The name should be less than 30 characters. ONLY OUTPUT THE NAME YOU GENERATED. NO OTHER TEXT.
-    """
-    
-    prompt = f"""
-        <|begin_of_text|>
-        <|start_header_id|>system<|end_header_id|>
-        {system_prompt}
-        <|eot_id|>
-        <|start_header_id|>AI Message<|end_header_id|>
-        {llm_message}
-        <|eot_id|>
-        <|start_header_id|>Student Message<|end_header_id|>
-        {student_message}
-        <|eot_id|>
-        <|start_header_id|>assistant<|end_header_id|>
-    """
-    
-    session_name = llm.invoke(prompt)
     return session_name
