@@ -610,7 +610,7 @@ Never provide medical advice, diagnoses, or pharmaceutical recommendations. Alwa
     def _get_default_empathy_prompt(self):
         """Default empathy evaluation prompt."""
         return """
-You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacy student's empathetic communication.
+You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacist's empathetic communication.
 
 **EVALUATION CONTEXT:**
 Patient Context: {patient_context}

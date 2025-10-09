@@ -180,7 +180,7 @@ def get_default_empathy_prompt() -> str:
     """Default empathy evaluation prompt. Updated for admin control."""
     # Force deployment update
     return """
-You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacy student's empathetic communication.
+You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacist's empathetic communication.
 
 **EVALUATION CONTEXT:**
 Patient Context: {patient_context}
@@ -597,12 +597,12 @@ def get_response(
         empathy_feedback = ""
     
     completion_string = """
-                Once I, the pharmacy student, have give you a diagnosis, politely leave the conversation and wish me goodbye.
+                Once I, the pharmacist, have give you a diagnosis, politely leave the conversation and wish me goodbye.
                 Regardless if I have given you the proper diagnosis or not for the patient you are pretending to be, stop talking to me.
                 """
     if llm_completion:
         completion_string = """
-                Continue this process until you determine that me, the pharmacy student, has properly diagnosed the patient you are pretending to be.
+                Continue this process until you determine that me, the pharmacist, has properly diagnosed the patient you are pretending to be.
                 Once the proper diagnosis is provided, include SESSION COMPLETED in your response and politely end the conversation.
                 """
 

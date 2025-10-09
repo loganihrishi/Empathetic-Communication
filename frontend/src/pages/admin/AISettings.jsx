@@ -94,7 +94,7 @@ Never provide medical advice, diagnoses, or pharmaceutical recommendations. Alwa
 Use the following document(s) to provide hints as a patient, but be subtle, somewhat ignorant, and realistic.
 Again, YOU ARE SUPPOSED TO ACT AS THE PATIENT.`;
 
-  const DEFAULT_EMPATHY_PROMPT = `You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacy student's empathetic communication.
+  const DEFAULT_EMPATHY_PROMPT = `You are an LLM-as-a-Judge for healthcare empathy evaluation. Your task is to assess, score, and provide detailed justifications for a pharmacist's empathetic communication.
 
 **EVALUATION CONTEXT:**
 Patient Context: {{patient_context}}
