@@ -884,8 +884,6 @@ Provide structured evaluation with detailed justifications for each score.
             if not self.patient_id:
                 return None
                 
-            logger.info(f"📋 VOICE: Retrieving medical context for patient_id: {self.patient_id}")
-            
             # Get RDS proxy connection details
             conn = get_pg_connection()
             cursor = conn.cursor()

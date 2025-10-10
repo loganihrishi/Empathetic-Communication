@@ -80,7 +80,6 @@ class VoiceConnectionManager:
                 'application_name': f"nova_sonic_voice_{os.environ.get('SESSION_ID', 'unknown')}"
             }
             
-            logger.info(f"🔗 VOICE_CONFIG_SUCCESS: endpoint={rds_endpoint}, user={secret['username']}, db={secret['dbname']}")
             return self._config
             
         except Exception as e:

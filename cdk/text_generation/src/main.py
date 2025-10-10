@@ -44,10 +44,8 @@ def get_secret(secret_name, expect_json=True):
             response = secrets_manager_client.get_secret_value(SecretId=secret_name)["SecretString"]
             db_secret = json.loads(response) if expect_json else response
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON for secret {secret_name}: {e}")
             raise ValueError(f"Secret {secret_name} is not properly formatted as JSON.")
         except Exception as e:
-            logger.error(f"Error fetching secret {secret_name}: {e}")
             raise
     return db_secret
 
@@ -167,11 +165,8 @@ def get_patient_details(patient_id):
 
         if result:
             patient_name, patient_age, patient_prompt, llm_completion = result
-            logger.info(f"Patient details found for patient_id {patient_id}: "
-                        f"Name: {patient_name}, Age: {patient_age}, Prompt: {patient_prompt}, LLM Completion: {llm_completion}")
             return patient_name, patient_age, patient_prompt, llm_completion
         else:
-            logger.warning(f"No details found for patient_id {patient_id}")
             return None, None, None, None
 
     except Exception as e:
@@ -249,7 +244,6 @@ def handler(event, context):
     patient_name, patient_age, patient_prompt, llm_completion = get_patient_details(
         patient_id)
     if patient_name is None or patient_age is None or patient_prompt is None or llm_completion is None:
-        logger.error(f"Error fetching patient details for patient_id: {patient_id}")
         return {
             'statusCode': 400,
             "headers": {

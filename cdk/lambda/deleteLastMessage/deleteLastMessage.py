@@ -27,10 +27,10 @@ def get_secret(secret_name, expect_json=True):
             response = secrets_manager_client.get_secret_value(SecretId=secret_name)["SecretString"]
             db_secret = json.loads(response) if expect_json else response
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON for secret {secret_name}: {e}")
+            logger.error(f"Failed to decode JSON for the secret: {e}")
             raise ValueError(f"Secret {secret_name} is not properly formatted as JSON.")
         except Exception as e:
-            logger.error(f"Error fetching secret {secret_name}: {e}")
+            logger.error(f"Error fetching the secret: {e}")
             raise
     return db_secret
 

@@ -81,7 +81,6 @@ class DatabaseConnectionManager:
                 'application_name': f"empathy_coach_{os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'unknown')}"
             }
             
-            logger.info(f"🔗 DB_CONFIG_SUCCESS: endpoint={rds_endpoint}, user={secret['username']}, db={secret['dbname']}")
             return self._config
             
         except Exception as e:

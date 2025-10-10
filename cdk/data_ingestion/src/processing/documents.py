@@ -74,7 +74,7 @@ def get_ingestion_status(patient_id: str, file_path: str, connection) -> str:
         if cur:
             cur.close()
         connection.rollback()
-        logger.error(f"Error retrieving ingestion status for {file_path}: {e}")
+        logger.error(f"Error retrieving ingestion status for the file: {e}")
         return None
 
 def update_ingestion_status(patient_id: str, file_path: str, status: str, connection):
@@ -99,7 +99,7 @@ def update_ingestion_status(patient_id: str, file_path: str, status: str, connec
         result = cur.fetchone()
 
         if result and result[0] == "completed":
-            logger.info(f"Ingestion status for {file_path} is already 'completed'. Skipping update.")
+            logger.info(f"Ingestion status for the file is already 'completed'. Skipping update.")
             connection.commit()
             cur.close()
             return
@@ -114,13 +114,13 @@ def update_ingestion_status(patient_id: str, file_path: str, status: str, connec
         connection.commit()
         cur.close()
 
-        logger.info(f"Ingestion status for {file_path} updated to '{status}' for patient {patient_id}.")
+        logger.info(f"Ingestion status for the file updated to '{status}' for the patient.")
 
     except Exception as e:
         if cur:
             cur.close()
         connection.rollback()
-        logger.error(f"Error updating ingestion status for patient {patient_id}, file {file_path}: {e}")
+        logger.error(f"Error updating ingestion status for patient for the file: {e}")
         raise
 
 def store_doc_texts(
@@ -244,7 +244,7 @@ def store_doc_chunks(
                 doc_chunk.metadata["doc_id"] = this_uuid
                 
             else:
-                logger.warning(f"Empty chunk for {filename}")
+                logger.warning(f"Empty chunk for the file")
         
         s3.delete_object(Bucket=bucket, Key=filename)
         
@@ -283,12 +283,10 @@ def process_documents(
             if filename.endswith((".pdf", ".docx", ".pptx", ".txt", ".xlsx", ".xps", ".mobi", ".cbz")):
                 file_path = f"{group}/{patient_id}/documents/{os.path.basename(filename)}"
                 this_doc_chunks = []
-                print(file_path)
 
                 # Check if ingestion has already been completed
                 current_status = get_ingestion_status(patient_id, file_path, connection)
                 if current_status == "completed":
-                    logger.info(f"Ingestion already completed for {file_path}, skipping update.")
                     continue
                 
                 this_doc_chunks = add_document(

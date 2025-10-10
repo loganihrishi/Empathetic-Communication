@@ -21,9 +21,7 @@ secrets_manager_client = boto3.client("secretsmanager")
 RDS_PROXY_ENDPOINT = os.environ.get("RDS_PROXY_ENDPOINT")  # Replace with your actual RDS proxy endpoint
 DB_SECRET_NAME = os.environ.get("SM_DB_CREDENTIALS")  # Replace with your actual secret name
 print(f"Using RDS Proxy Endpoint: {RDS_PROXY_ENDPOINT}")
-print(f"Using DB Secret Name: {DB_SECRET_NAME}")
 logger.info(f"Using RDS Proxy Endpoint: {RDS_PROXY_ENDPOINT}")
-logger.info(f"Using DB Secret Name: {DB_SECRET_NAME}")
 
 def format_chat_history(session_id: str, table_name: str = "DynamoDB-Conversation-Table") -> str:
     history = DynamoDBChatMessageHistory(table_name=table_name, session_id=session_id)
@@ -61,10 +59,10 @@ def get_secret(secret_name, expect_json=True):
             response = secrets_manager_client.get_secret_value(SecretId=secret_name)["SecretString"]
             db_secret = json.loads(response) if expect_json else response
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON for secret {secret_name}: {e}")
+            logger.error(f"Failed to decode JSON for secret: {e}")
             raise ValueError(f"Secret {secret_name} is not properly formatted as JSON.")
         except Exception as e:
-            logger.error(f"Error fetching secret {secret_name}: {e}")
+            logger.error(f"Error fetching secret: {e}")
             raise
     return db_secret
 
