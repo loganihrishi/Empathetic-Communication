@@ -166,10 +166,6 @@ export class DatabaseStack extends Stack {
             ]
         });
         
-        console.log(`🏗️ RDS_PROXY_CONSOLIDATION: Migrating from 3 proxies to 1 unified proxy`);
-        console.log(`🏗️ RDS_PROXY_COST_SAVINGS: 68% reduction ($32/month → $11/month)`);
-        console.log(`🏗️ RDS_PROXY_OPTIMIZATION: maxConnections=80%, idleConnections=50%, timeout=120s`);
-
         /**
          * Workaround for TargetGroupName not being set automatically
          */
