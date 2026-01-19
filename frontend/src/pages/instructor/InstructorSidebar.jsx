@@ -91,14 +91,14 @@ const InstructorSidebar = ({ setSelectedComponent, activeExternal }) => {
                 route: "InstructorAnalytics",
               },
               {
-                text: "Edit Patients",
-                icon: <EditIcon />,
-                route: "InstructorEditPatients",
-              },
-              {
                 text: "Prompt Settings",
                 icon: <PsychologyIcon />,
                 route: "PromptSettings",
+              },
+              {
+                text: "Edit Patients",
+                icon: <EditIcon />,
+                route: "InstructorEditPatients",
               },
               {
                 text: "View Students",
